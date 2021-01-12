@@ -42,4 +42,10 @@ void server_t_terminate(struct server_t* server);
  */
 void server_t_start(struct server_t* server);
 
+
+/**
+ * Disconnect a client from the current server
+ */
+void server_t_disconnect_client(struct server_t* server, int client);
+
 #endif

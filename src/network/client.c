@@ -93,6 +93,8 @@ void client_t_create(struct client_t** client, client_handler handler, const cha
 
 void client_t_destroy(struct client_t* client)
 {
+	client_t_send(client, "/disconnect/", "");
+
 	close(client->client_fd);
 	thread_t_destroy(client->receiver);
 	mutex_t_destroy(client->lock);

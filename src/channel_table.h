@@ -1,6 +1,9 @@
 #ifndef CHANNEL_H
 #define CHANNEL_H
 
+#include "network/async.h"
+
+
 /**
  * This structure holds information about a
  * client connection.
@@ -27,6 +30,7 @@ struct channel_node_t
 
 struct channel_table_t
 {
+    struct mutex_t* lock;
     struct channel_node_t* table[128];
 };
 

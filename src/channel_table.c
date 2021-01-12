@@ -21,6 +21,7 @@ void client_node_t_remove(struct client_node_t** node)
 void channel_table_t_create(struct channel_table_t** table)
 {
     *table = (struct channel_table_t*)malloc(sizeof(struct channel_table_t));
+    mutex_t_create(&(*table)->lock);
     for(int i=0; i<128; i++)
     {
         (*table)->table[i] = NULL;
@@ -28,6 +29,7 @@ void channel_table_t_create(struct channel_table_t** table)
 }
 
 void channel_table_t_add(struct channel_table_t* table, const char* string, int client) {
+    mutex_t_lock(table->lock);
     int id = hash_string(string)%128;
 
     // If no channel with 'string' name exist yet, it should be created
@@ -68,9 +70,13 @@ void channel_table_t_add(struct channel_table_t* table, const char* string, int 
         cli->prev = (*tail)->clients;
         (*tail)->clients = cli;
     }
+    mutex_t_unlock(table->lock);
+
 }
 
 void channel_table_t_remove(struct channel_table_t* table, const char* string, int client) {
+    mutex_t_lock(table->lock);
+
     int id = hash_string(string)%128;
 
     if(!table->table[id]) return;
@@ -102,6 +108,7 @@ void channel_table_t_remove(struct channel_table_t* table, const char* string, i
         (*tail) = NULL;
         tail = NULL;
     }
+    mutex_t_unlock(table->lock);
 }
 
 struct client_node_t* channel_table_t_get_channel(struct channel_table_t* table, const char* string)
@@ -166,4 +173,6 @@ void channel_table_t_destroy(struct channel_table_t* table)
             free(tmp);
         }
     }
+
+    mutex_t_destroy(&table->lock);
 }

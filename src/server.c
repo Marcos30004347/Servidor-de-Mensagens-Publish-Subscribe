@@ -48,12 +48,6 @@ void remove_channel(struct request_t request, struct reply_t reply)
 
 void broadcast(struct request_t request, struct reply_t reply)
 {
-    if(strcmp(request.message, "##kill") == 0)
-    {
-        server_t_terminate(request.server);
-        return;
-    }
-
     char* message = (char*)request.message;
  
     char* channel = NULL;
@@ -74,15 +68,37 @@ void broadcast(struct request_t request, struct reply_t reply)
     }
 }
 
-int main() {
+void kill(struct request_t request, struct reply_t reply)
+{
+    server_t_terminate(request.server);
+    return;
+}
+
+void disconnect(struct request_t request, struct reply_t reply)
+{
+    server_t_disconnect_client(request.server, reply.client);
+    return;
+}
+
+int main(int argc, char *argv[]) {
+    if(argc < 2) 
+    {
+        printf("Argumentos insuficientes!\n");
+        return -1;
+    }
+
+    int port = atoi(argv[1]);
+
     channel_table_t_create(&channels);
 
     server_t_create(&server);
-    server_t_bind_to_port(server, 4);
+    server_t_bind_to_port(server, port);
 
     server_t_add_endpoint(server, "/channel/listen/", add_channel);
     server_t_add_endpoint(server, "/channel/mute/", remove_channel);
     server_t_add_endpoint(server, "/broadcast/", broadcast);
+    server_t_add_endpoint(server, "/disconnect/", disconnect);
+    server_t_add_endpoint(server, "/kill/", kill);
 
     server_t_start(server);
 

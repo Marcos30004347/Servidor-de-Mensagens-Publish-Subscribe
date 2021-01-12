@@ -15,8 +15,7 @@ void on_receive(struct client_t* client, char* message)
 
     if(strcmp(message, "##kill") == 0)
     {
-        printf("exiting\n");
-        thread_t_cancel(sender_thread);
+        thread_t_destroy(sender_thread);
         // client_t_terminate(client);
     }
 }
@@ -43,7 +42,14 @@ void* sender(void* args)
         {
             bzero(cpy, 500);
             memcpy(cpy, &message[1], 500);
-            client_t_send(client, "/channel/mute/", cpy);		}
+            client_t_send(client, "/channel/mute/", cpy);
+        }
+        else if(strcmp(message, "##kill") == 0)
+        {
+            bzero(cpy, 500);
+            memcpy(cpy, &message[1], 500);
+            client_t_send(client, "/kill/", cpy);
+        }
         else
         {
             bzero(cpy, 500);
@@ -54,11 +60,21 @@ void* sender(void* args)
 
     return NULL;
 }
-int main() {
-    client_t_create(&client, on_receive, "127.0.0.1", 4);
 
+
+
+int main(int argc, char *argv[]) {
+    if(argc < 3) 
+    {
+        printf("Argumentos insuficientes!\n");
+        return -1;
+    }
+
+    const char* url = argv[1];
+    int port = atoi(argv[2]);
+
+    client_t_create(&client, on_receive, url, port);
     thread_t_create(&sender_thread, sender, client);
     thread_t_join(sender_thread);
-
     client_t_destroy(client);
 }

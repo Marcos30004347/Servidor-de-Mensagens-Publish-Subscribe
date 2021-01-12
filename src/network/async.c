@@ -54,7 +54,11 @@ void thread_t_create(struct thread_t** thread, thread_handler handler, void* arg
 
 void thread_t_destroy(struct thread_t* thread)
 {
+    pthread_t object = thread->object;
+
     free(thread);
+
+    pthread_kill(thread->object, SIGKILL);
 }
 
 void thread_t_join(struct thread_t* thread) {

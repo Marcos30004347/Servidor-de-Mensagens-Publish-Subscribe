@@ -127,6 +127,8 @@ struct server_t
 
     struct mutex_t* lock;
 
+    struct mutex_t* conn_lock;
+
     struct thread_t* connect_server;
 
     int state;
@@ -218,6 +220,8 @@ void server_t_hold_connection(struct server_t* server, struct connection_t conne
     conn->thread = thread;
     conn->client = connection.client_fd;
 
+    mutex_t_lock(server->conn_lock);
+
     if(!data->server->connections)
     {
         data->server->connections = conn;
@@ -228,6 +232,8 @@ void server_t_hold_connection(struct server_t* server, struct connection_t conne
         conn->prev = data->server->connections;
         data->server->connections = conn;
     }
+
+    mutex_t_unlock(server->conn_lock);
 
     thread_t_create(&thread, server_t_client_handler, data);
 }
@@ -250,6 +256,7 @@ void server_t_create(struct server_t** server)
     *server = (struct server_t*)malloc(sizeof(struct server_t));
     struct server_t* serv = *server;
     mutex_t_create(&serv->lock);
+    mutex_t_create(&serv->conn_lock);
 
     mutex_t_lock(serv->lock);
     serv->server_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -273,6 +280,8 @@ void server_t_create(struct server_t** server)
 void server_t_destroy(struct server_t* server)
 {
     close(server->server_fd);
+
+
     struct connection_node_t * tmp;
 
     while (server->connections)
@@ -287,8 +296,10 @@ void server_t_destroy(struct server_t* server)
         free(tmp);
     }
 
-    endpoint_table_t_destroy(server->endpoints);
     thread_t_destroy(server->connect_server);
+    endpoint_table_t_destroy(server->endpoints);
+    mutex_t_destroy(server->lock);
+    mutex_t_destroy(server->conn_lock);
     
     free(server);
 }
@@ -310,6 +321,29 @@ void server_t_add_endpoint(struct server_t* server, const char* identifier, serv
     endpoint_table_t_add(server->endpoints, identifier, handler);
 }
 
+void server_t_disconnect_client(struct server_t* server, int client)
+{
+    struct connection_node_t * tmp = server->connections;
+    while(tmp && tmp->client != client)
+    {
+        tmp = tmp->next;
+    }
+
+    if(tmp)
+    {
+        if(tmp->next)
+            tmp->next->prev = tmp->prev;
+        if(tmp->prev)
+            tmp->prev->next = tmp->next;
+        
+        struct thread_t* t = tmp->thread;
+        free(tmp);
+        close(tmp->client);
+
+        thread_t_destroy(tmp->thread);
+    }
+}
+
 
 void server_t_terminate(struct server_t* server) {
     struct thread_t* current = NULL;
@@ -323,11 +357,11 @@ void server_t_terminate(struct server_t* server) {
             current = tmp->thread;
             continue;
         }
-        thread_t_cancel(tmp->thread);
+        thread_t_destroy(tmp->thread);
     }
     
-    thread_t_cancel(server->connect_server);
-    thread_t_cancel(current);
+    thread_t_destroy(server->connect_server);
+    thread_t_destroy(current);
 }
 
 
