@@ -54,27 +54,9 @@ void thread_t_create(struct thread_t** thread, thread_handler handler, void* arg
 
 void thread_t_destroy(struct thread_t* thread)
 {
-    pthread_t object = thread->object;
-
     free(thread);
-
-    pthread_kill(thread->object, SIGKILL);
 }
 
 void thread_t_join(struct thread_t* thread) {
     pthread_join(thread->object, NULL);
-}
-
-void thread_t_cancel(struct thread_t* thread)
-{
-    pthread_kill(thread->object, SIGKILL);
-}
-
-int thread_t_is_current_thread(struct thread_t* thread) {
-    return pthread_self() == thread->object;
-}
-
-void thread_t_exit()
-{
-    pthread_exit(NULL);
 }

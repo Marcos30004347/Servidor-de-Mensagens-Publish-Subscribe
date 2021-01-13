@@ -130,7 +130,6 @@ struct client_node_t* channel_table_t_get_channel(struct channel_table_t* table,
 
 struct client_node_t* channel_table_t_get_client(struct channel_table_t* table, const char* string, int cid)
 {
-
     int id = hash_string(string)%128;
     if(!table->table[id])
     {
@@ -141,10 +140,9 @@ struct client_node_t* channel_table_t_get_client(struct channel_table_t* table, 
     while(strcmp(tail->channel_name, string) == 0 && tail->next) {
         tail = tail->next;
     }
+
     if(strcmp(tail->channel_name, string) != 0) return NULL;
 
-
-    return tail->clients;
     struct client_node_t* client = tail->clients;
 
     while(client) {
@@ -174,5 +172,5 @@ void channel_table_t_destroy(struct channel_table_t* table)
         }
     }
 
-    mutex_t_destroy(&table->lock);
+    mutex_t_destroy(table->lock);
 }

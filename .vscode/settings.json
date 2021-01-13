@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "*.inc": "c",
+        "queue": "c",
+        "stack": "c",
+        "random": "c",
+        "system_error": "cpp",
+        "shared_mutex": "c",
+        "mutex": "c"
+    }
+}

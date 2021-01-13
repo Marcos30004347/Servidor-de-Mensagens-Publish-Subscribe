@@ -12,7 +12,7 @@ void add_channel(struct request_t request, struct reply_t reply)
     bzero(reply_message, sizeof(reply_message));
 
     char* channel = (char*)request.message;
-    
+    printf("%i\n", reply.client);
     if(channel_table_t_get_client(channels, channel, reply.client) != NULL)
     {
         sprintf(reply_message,"already subscribed +%s", channel);
@@ -21,7 +21,7 @@ void add_channel(struct request_t request, struct reply_t reply)
     else 
     {
         channel_table_t_add(channels, channel, reply.client);
-        sprintf(reply_message,"subscribed  +%s", channel);
+        sprintf(reply_message,"subscribed +%s", channel);
         reply_t_send(reply.client, reply_message);
     }
 
@@ -74,11 +74,7 @@ void kill(struct request_t request, struct reply_t reply)
     return;
 }
 
-void disconnect(struct request_t request, struct reply_t reply)
-{
-    server_t_disconnect_client(request.server, reply.client);
-    return;
-}
+
 
 int main(int argc, char *argv[]) {
     if(argc < 2) 
@@ -97,7 +93,6 @@ int main(int argc, char *argv[]) {
     server_t_add_endpoint(server, "/channel/listen/", add_channel);
     server_t_add_endpoint(server, "/channel/mute/", remove_channel);
     server_t_add_endpoint(server, "/broadcast/", broadcast);
-    server_t_add_endpoint(server, "/disconnect/", disconnect);
     server_t_add_endpoint(server, "/kill/", kill);
 
     server_t_start(server);

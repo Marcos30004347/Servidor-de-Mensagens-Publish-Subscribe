@@ -11,6 +11,11 @@
 
 #include "async.h"
 
+#include <sys/select.h>
+#include <fcntl.h>
+
+#include <errno.h>
+
 struct client_t;
 
 typedef void(*client_handler)(struct client_t*, char*);
@@ -19,8 +24,8 @@ struct client_t
 {
     struct sockaddr_in server_adress;
 
-	struct thread_t* receiver;
-	struct mutex_t* lock;
+	// struct thread_t* receiver;
+	// struct mutex_t* lock;
 
     int client_fd;
 
@@ -28,20 +33,47 @@ struct client_t
 };
 
 
-void* reader_therad(void* args)
+// void* reader_therad(void* args)
+// {
+// 	struct client_t* client = (struct client_t*)(args);
+// 	char message[500];
+
+// 	while(read(client->client_fd, message, sizeof(char)*500)) {
+// 		if(strlen(message) && client->on_receive)
+// 			client->on_receive(client, message);
+// 		bzero(message, 500);
+// 	}
+
+// 	return NULL;
+// }
+
+int client_t_receive(struct client_t* client, char* message, int length)
 {
-	struct client_t* client = (struct client_t*)(args);
-	char message[500];
+	// fd_set fds;
+	// FD_ZERO(&fds);
+	// FD_SET(client->client_fd, &fds);
 
-	while(1) {
-		bzero(message, 500);
-		read(client->client_fd, message, sizeof(char)*500);
+	// struct timeval tv = { 0L, 0L };
 
-		if(client->on_receive)
-			client->on_receive(client, message);
+	// if(!select(1, &fds, NULL, NULL, &tv)) {
+	// 	return -1;
+	// }
+	int sd = client->client_fd;
+
+	fd_set input;
+	FD_ZERO(&input);
+	FD_SET(sd, &input);
+
+	struct timeval timeout = {0, 0};
+
+	int n = select(sd + 1, &input, NULL, NULL, &timeout);
+
+	if (n <= 0 || !FD_ISSET(sd, &input)) {
+		return -1;
 	}
 
-	return NULL;
+	read(client->client_fd, message, sizeof(char)*length);
+	return 1;
 }
 
 void client_t_send(struct client_t* client, const char* url, char* message) {
@@ -59,44 +91,48 @@ void client_t_send(struct client_t* client, const char* url, char* message) {
 }
 
 
-void client_t_create(struct client_t** client, client_handler handler, const char* url, int port)
+void client_t_create(struct client_t** client, const char* url, int port)
 {
     *client = (struct client_t*)malloc(sizeof(struct client_t));
     struct client_t* c = *client;
 
     c->client_fd = socket(AF_INET, SOCK_STREAM, 0);
+
     if (c->client_fd == -1) { 
 		printf("socket creation failed...\n"); 
 		exit(0); 
 	}
 
+
     c->server_adress.sin_family = AF_INET; 
 	c->server_adress.sin_addr.s_addr = inet_addr(url); 
 	c->server_adress.sin_port = htons(port); 
-	c->on_receive = handler;
-	if (connect(c->client_fd, (struct sockaddr *)&c->server_adress, sizeof(c->server_adress)) != 0) { 
-		printf("connection with the server failed...\n"); 
-		exit(0); 
-	} 
+	// c->on_receive = handler;
 
-	mutex_t_create(&c->lock);	
-	thread_t_create(&c->receiver, reader_therad, c);
+	int conn = connect(c->client_fd, (struct sockaddr *)&c->server_adress, sizeof(c->server_adress));
+	if (conn != 0){
+		printf("connection with the server failed with %i...\n", conn); 
+		exit(0); 
+	}
+
+	int flags = fcntl(c->client_fd, F_GETFL);
+	fcntl(c->client_fd, F_SETFL ,flags | O_NONBLOCK);
+	// if (connect(c->client_fd, (struct sockaddr *)&c->server_adress, sizeof(c->server_adress)) != 0) { 
+	// } 
+
+	// mutex_t_create(&c->lock);	
+	// thread_t_create(&c->receiver, reader_therad, c);
 
 }
 
-
-// void client_t_terminate(struct client_t* client)
-// {
-// 	thread_t_cancel(client->receiver);
-// 	thread_t_join(client->receiver);
-// }
-
 void client_t_destroy(struct client_t* client)
 {
-	client_t_send(client, "/disconnect/", "");
-
-	close(client->client_fd);
-	thread_t_destroy(client->receiver);
-	mutex_t_destroy(client->lock);
+	// thread_t_destroy(client->receiver);
+	// mutex_t_destroy(client->lock);
 	free(client);
+}
+
+void client_t_disconnect(struct client_t* client)
+{
+	close(client->client_fd);
 }

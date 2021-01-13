@@ -154,11 +154,8 @@ void* server_t_client_handler(void* c) {
     int connfd = data->connfd;
     char request_message[500]; 
 
-    while(1)
-    {  
-        bzero(request_message, 500); 
-
-        read(connfd, request_message, sizeof(request_message)); 
+    while(read(connfd, request_message, sizeof(request_message)))
+    {
 
         char* endpoint = NULL;
         char* message = NULL;
@@ -189,6 +186,8 @@ void* server_t_client_handler(void* c) {
         mutex_t_lock(data->server->lock);
         handler(req, rep);
         mutex_t_unlock(data->server->lock);
+
+        bzero(request_message, 500); 
     }
 
     free(data);
@@ -201,26 +200,18 @@ struct connection_t server_t_accept_connection(struct server_t* server) {
     struct connection_t conn;
     socklen_t len = sizeof(conn.client_address); 
     conn.client_fd = accept(server->server_fd, (struct sockaddr*)&conn.client_address, &len); 
-
-    if (conn.client_fd < 0) {
-        printf("server acccept failed...\n"); 
-        exit(0); 
-    }
     return conn;
 }
 
 void server_t_hold_connection(struct server_t* server, struct connection_t connection) {
-    struct thread_t* thread;
+    struct thread_t* thread = NULL;
+
     struct thread_data* data =(struct thread_data*) malloc(sizeof(struct thread_data));
 
     data->connfd = connection.client_fd;
     data->server = server;
+
     struct connection_node_t* conn = (struct connection_node_t*)malloc(sizeof(struct connection_node_t));
-
-    conn->thread = thread;
-    conn->client = connection.client_fd;
-
-    mutex_t_lock(server->conn_lock);
 
     if(!data->server->connections)
     {
@@ -233,19 +224,25 @@ void server_t_hold_connection(struct server_t* server, struct connection_t conne
         data->server->connections = conn;
     }
 
-    mutex_t_unlock(server->conn_lock);
-
     thread_t_create(&thread, server_t_client_handler, data);
+
+    conn->thread = thread;
+    conn->client = connection.client_fd;
 }
 
 void* accept_connection_thread(void* args)
 {
-    struct server_t* server = (struct server_t*)(args);
 
-    while(1)
+    struct server_t* server = (struct server_t*)(args);
+    struct connection_t connection = server_t_accept_connection(server);
+
+    while(connection.client_fd != -1)
     {
-        struct connection_t connection = server_t_accept_connection(server); 
+        mutex_t_lock(server->conn_lock);
         server_t_hold_connection(server, connection);
+        mutex_t_unlock(server->conn_lock);
+
+        connection = server_t_accept_connection(server);
     }
 
     return NULL;
@@ -277,32 +274,7 @@ void server_t_create(struct server_t** server)
 }
 
 
-void server_t_destroy(struct server_t* server)
-{
-    close(server->server_fd);
 
-
-    struct connection_node_t * tmp;
-
-    while (server->connections)
-    {
-        tmp = server->connections;
-    
-        server->connections = server->connections->prev;
-        if(server->connections)
-            server->connections->next = NULL;
-
-        thread_t_destroy(tmp->thread);
-        free(tmp);
-    }
-
-    thread_t_destroy(server->connect_server);
-    endpoint_table_t_destroy(server->endpoints);
-    mutex_t_destroy(server->lock);
-    mutex_t_destroy(server->conn_lock);
-    
-    free(server);
-}
 
 void server_t_bind_to_port(struct server_t* server, int port)
 {
@@ -321,49 +293,50 @@ void server_t_add_endpoint(struct server_t* server, const char* identifier, serv
     endpoint_table_t_add(server->endpoints, identifier, handler);
 }
 
-void server_t_disconnect_client(struct server_t* server, int client)
-{
-    struct connection_node_t * tmp = server->connections;
-    while(tmp && tmp->client != client)
-    {
-        tmp = tmp->next;
-    }
-
-    if(tmp)
-    {
-        if(tmp->next)
-            tmp->next->prev = tmp->prev;
-        if(tmp->prev)
-            tmp->prev->next = tmp->next;
-        
-        struct thread_t* t = tmp->thread;
-        free(tmp);
-        close(tmp->client);
-
-        thread_t_destroy(tmp->thread);
-    }
-}
-
 
 void server_t_terminate(struct server_t* server) {
-    struct thread_t* current = NULL;
+
     struct connection_node_t * tmp = server->connections;
+
     while(tmp)
     {
         reply_t_send(tmp->client, "##kill");
         tmp = tmp->prev;
-        if(thread_t_is_current_thread(tmp->thread))
-        {
-            current = tmp->thread;
-            continue;
-        }
-        thread_t_destroy(tmp->thread);
     }
-    
-    thread_t_destroy(server->connect_server);
-    thread_t_destroy(current);
+
+    // mutex_t_lock(server->conn_lock);
+    // thread_t_cancel(server->connect_server);
+    close(server->server_fd);
+    // mutex_t_unlock(server->conn_lock);
 }
 
+void server_t_destroy(struct server_t* server)
+{
+    struct connection_node_t * tmp;
+    mutex_t_lock(server->conn_lock);
+    while (server->connections)
+    {
+        tmp = server->connections;
+    
+        server->connections = server->connections->prev;
+        if(server->connections)
+            server->connections->next = NULL;
+
+        thread_t_destroy(tmp->thread);
+        free(tmp);
+    }
+
+    thread_t_destroy(server->connect_server);
+
+    mutex_t_unlock(server->conn_lock);
+
+    endpoint_table_t_destroy(server->endpoints);
+    // close(server->server_fd);
+    mutex_t_destroy(server->lock);
+    mutex_t_destroy(server->conn_lock);
+    
+    free(server);
+}
 
 void server_t_start(struct server_t* server)
 {

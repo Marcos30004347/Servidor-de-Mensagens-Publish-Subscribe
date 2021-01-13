@@ -51,19 +51,10 @@ void thread_t_destroy(struct thread_t* thread);
 void thread_t_join(struct thread_t* thread);
 
 /**
- * Cancel a thread_t structure execution.
- */
-void thread_t_cancel(struct thread_t* thread);
-
-/**
  * Returns 1 if the current thread_t in execution is the thread param,
  * and 0 otherwise.
  */
 int thread_t_is_current_thread(struct thread_t* thread);
 
-/**
- * Exit the current thread in execution.
- */
-void thread_t_exit();
 
 #endif

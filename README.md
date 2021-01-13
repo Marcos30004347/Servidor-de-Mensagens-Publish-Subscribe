@@ -70,8 +70,6 @@ A partir disso, podemos definir os quatro endpoints necessários:
 
 4. "/broadcast/" - Esse endpoint é responsavel por extrair da mensagem recebida os canais que o cliente deseja postar uma mensagem e enviar a mesma mensagem para todos os clientes cadastrados nesses canais.
 
-Além destes endpoints também foi adicionado um endpoint extra "/disconnect/" responsável por desconectar o cliente de um servidor destruindo todas as estruturas e memória ocupadas pelo cliente se desconectando.
-
 ### Cliente:
 O cliente é responsável por 2 coisas:
     
