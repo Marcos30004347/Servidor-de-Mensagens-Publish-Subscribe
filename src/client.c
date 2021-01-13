@@ -7,23 +7,6 @@
 
 #include "terminal.h"
 
-struct client_t* client = NULL;
-// struct thread_t* sender_thread = NULL;
-int should_stop = 0;
-
-
-// void on_receive(struct client_t* client, char* message)
-// {
-//     if(strcmp(message, "##kill") == 0)
-//     {
-//         should_stop = 1;
-//         return;
-//     }
-
-//     if(strlen(message))
-//         printf("%s\n", message);
-// }
-
 
 int main(int argc, char *argv[]) {
     if(argc < 3) 
@@ -35,33 +18,31 @@ int main(int argc, char *argv[]) {
     const char* url = argv[1];
     int port = atoi(argv[2]);
 
+    struct client_t* client = NULL;
     client_t_create(&client, url, port);
 
     char message[500] = {'\0'}, received[500] = {'\0'}, cpy[500] = {'\0'};
 
-    int stop = 0;
+    int stop_client = 0;
 
-    while(
-        strcmp(message, "##kill") != 0
-    ) {
-        stop = 0;
+    while(strcmp(message, "##kill") != 0)
+    {
+        stop_client = 0;
         while(!keyboard_input())
         {
             bzero(received, 500);
-            int rec = client_t_receive(client, received, 500);
-
-            if(rec != -1)
+            if(client_t_receive(client, received, 500) != -1)
             {
                 if(strcmp(received, "##kill") == 0)
                 {
-                    stop = 1;
+                    stop_client = 1;
                     break;
                 }
                 printf("%s\n", received);
             }
         }
     
-        if(stop) break;
+        if(stop_client) break;
 
         bzero(cpy, 500);
         bzero(message, 500);
@@ -72,25 +53,25 @@ int main(int argc, char *argv[]) {
             continue;
         }
 
-        if(message[0] == '+')
+        if(message[0] == '+') // Listen to channel request
         {
             bzero(cpy, 500);
             memcpy(cpy, &message[1], 500);
             client_t_send(client, "/channel/listen/", cpy);
         }
-        else if(message[0] == '-')
+        else if(message[0] == '-') // Mute channel request
         {
             bzero(cpy, 500);
             memcpy(cpy, &message[1], 500);
             client_t_send(client, "/channel/mute/", cpy);
         }
-        else if(strcmp(message, "##kill") == 0)
+        else if(strcmp(message, "##kill") == 0) // Kill connections request
         {
             bzero(cpy, 500);
             memcpy(cpy, &message[1], 500);
             client_t_send(client, "/kill/", cpy);
         }
-        else
+        else  // Send message request
         {
             bzero(cpy, 500);
             memcpy(cpy, &message[0], 500);

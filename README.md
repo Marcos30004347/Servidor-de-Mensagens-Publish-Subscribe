@@ -13,6 +13,7 @@ A lógica de programação da aplicação Publish/Subscribe está definida nos a
 A aplicação é compativel somente com sistemas UNIX.
 
 ## Network:
+
 ### Introdução:
 Os arquivos em src/network são os arquivos que abstraem a implementação de uma estrutura de servidor e cliente para comunicação sobre a network além de algoritmos de hash para strings e estruturas de dados para programação assincrona.
 
@@ -29,16 +30,16 @@ Foi implementado em src/network/client.c uma estrutura que abstrai a funcionalid
 
 Foi feito o uso de unix sockets para a implementação do cliente e abtrações de estruturas de dados assincronas(encontradas em src/network/async.h).
 
-O cliente faz uso de um unico thread responsável por processar as mensagens enviadas pelo servidor cujo cliente está atualmente conectado.
+O cliente não utiliza nenhuma nenhuma thread extra, foi escolhido a implementação de um cliente que utiliza sockets não bloqueantes para fins de aprendizado e portanto o uso de threads nesse caso não foi necessário.
 
 ### Detalhes de implementação:
-Para a implementação das estruturas de server e de cliente dentro de network foram utilizadas estruturas de dados assincronas, como threads e mutexes, ambas essas estruturas foram abstraidas atravez da biblioteca pthreads em src/network/async.h e src/network/async.c.
+Para a implementação das estruturas de server dentro de network foi utilizadas estruturas de dados assincronas, como threads e mutexes, ambas essas estruturas foram abstraidas atravez da biblioteca pthreads em src/network/async.c.
 
-Foi feito o uso de unix sockets para a implementação do servidor e cliente assim como outras classes da standard library como strings, stdlib e stdio.
+Foi feito o uso de unix sockets para a implementação do servidor e cliente assim como outras classes da standard library como strings, stdlib e stdio. No caso do cliente foi utilizado um socket não bloqueante utilizando-se a flag ***O_NONBLOCK***.
 
-O uso de threads foi necessário para garantir que um servidor possa servir a mais de um cliente por vez, portanto para cada cliente o servidor cria uma thread unica que será responsável por escutar as requisições feitas por esse cliente, o servidor tambem possui uma mutex responsável por sincronizar a execução dos endpoints no servidor.
+O uso de threads foi necessário para garantir que um servidor possa servir a mais de um cliente por vez, portanto para cada cliente o servidor cria uma thread unica que será responsável por escutar as requisições feitas por esse cliente, o servidor também possui um mutex responsável por sincronizar a execução dos endpoints dentro do servidor.
 
-Pela natureza assincrona que o cliente pode receber as mensagens do servidor, também foi utilizado uma thread para tal.
+Para o cliente, também foi implementada em terminal.h algumas funções uteis no manejo de entradas de usuário, como funções não bloqueantes que verificam se existem algum input pendente no terminal. A partir disso, a lógica do cliente passa a ser bastante simples, basta testar se existe entrada pendente do usuário, caso exista, a requisição é serializada e enviada ao servidor, caso contrário, o cliente tenta receber dados do servidor até queo usuário faça alguma entrada.
 
 Para armazenar as conexoes ativas com o servidor, foi utilizado uma estrutura de lista encadeada que pode ser utilizada simultaneamente por multiplas threads, sincronizada através do uso de mutexes, onde cada nó armazena as informações references à uma conexão/cliente.
 
