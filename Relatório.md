@@ -1,0 +1,96 @@
+## **Universidade Federal de Minas Gerais**
+### **Departamento de Ciência da Computação**
+### **Curso de Redes 2020/2º**
+
+</br>
+
+### **Aluno:** Marcos Vinicius Moreira Santos
+
+</br>
+
+
+# Relatório: Trabalho Prático - Aplicação Publish/Subscribe
+## Introdução
+Ao longo dessa documentação discutiremos a implementação do Primeiro Trabalho Prático do Curso de Redes do Segundo Semestre de 2020.
+
+Para a implementação, o código foi dividido em 2 modulos, uma biblioteca de código que está em src/netowrk que serve como a abstração de um servidor e cliente TCP. Tal abstração foi usada para a implementação da aplicação de Publish/Subscribe ajudando a deixar as regras de negócio da aplicação mais limpas e de facil entendimento.
+
+A lógica de programação da aplicação Publish/Subscribe está definida nos arquivos *.c e *.h localizadas dentro do diretório "src/".
+
+### Compatibilidade:
+A aplicação foi testada somente em sistemas **UNIX**, e portanto a compatibilidade com outros sistemas não é garantida.
+
+# Network:
+
+### Introdução:
+Os arquivos em src/network são os arquivos que abstraem a implementação de uma estrutura de servidor e cliente para comunicação sobre a network além de algoritmos de hash para strings e estruturas de dados para programação assincrona.
+
+A biblioteca foi construida sobre UNIX sockets e POSIX threads além da biblioteca padrão do C99.
+
+### Servidor TCP:
+Em src/network/tcp_server.c foi definida uma estrutura de dados e metodos que abstraem um servidor TCP. A abstração em questão utiliza thread principal da aplicação para esperar conexões, e quando uma solicitação de conexão é feita por um cliente, essa mesma thread é responsável por criar uma nova thread que irá ser responsável por manter a conexão com o cliente ativa, qualquer mensagem enviada pelo cliente portanto será recebida e tratada dentro dessa thread.
+
+Em caso de aplicações em que a ordem em que o servidor irá processar as requisições de diferentes clientes importa, é possivel instanciar o servidor tcp com a flag **TCP_SERVER_SYNC**, essa flag fará com o que servidor execute a primeira requisição que chegar antes que a thread de um outro cliente com requisição pendente comece sua execução.
+
+O servidor pode ser customizado utilizando-se o método 
+
+    void tcp_server_t_set_request_handler(struct tcp_server_t* server, tcp_server_t_request_handler handler);
+
+Este método irá definir como o servidor deverá processar uma mensagem qualquer que chegue ao servidor.
+
+Estes metodos precisam seguir a interface:
+
+    void(*)(struct request_t, struct reply_t);
+
+As estruturas request_t e reply_t são estruturas que armazenam informações uteis como o cliente que fez a requisição, o servidor que está processando a requisição, a mensagem de payload e o tamanho da mensagem enviada pelo cliente.
+
+### Cliente TCP:
+Foi implementado em src/network/tcp_client.c uma estrutura que abstrai a funcionalidade de um client TCP.
+
+No cliente não foi necessário nenhuma thread extra, foi escolhido a implementação de um cliente que utiliza *'non blocking sockets'*. Essa escolha foi tomada para permitir que o programador possa fazer o uso dos recursos computacionais da forma que ele achar melhor baseado na aplicação sendo desenvolvida.
+
+### Detalhes de implementação:
+Para a implementação das estruturas do servidor, foram utilizadas estruturas de dados assincronas, como threads e mutexes, ambas essas estruturas foram abstraidas atravez da biblioteca pthreads em src/network/async.c.
+
+Foi feito o uso de UNIX sockets para a implementação do servidor e cliente assim como outras classes da biblioteca padrão como strings, stdlib e stdio. No caso do cliente foi utilizado um 
+*'non blocking socket'*  atualizando suas flags para incluir a flag ***O_NONBLOCK*** após sua inicialização.
+
+O uso de threads foi necessário para garantir que um servidor possa servir a mais de um cliente por vez, portanto para cada cliente o servidor cria uma thread unica que será responsável por escutar as mensagens enviadas por esse cliente.
+
+Para armazenar as conexoes ativas com o servidor, foi utilizado uma estrutura de lista encadeada que pode ser utilizada simultaneamente por multiplas threads, sincronizada através do uso de mutexes, onde cada nó armazena as informações references à uma conexão/cliente.
+
+# Aplicação Publish/Subscribe:
+Toda a lógica relacionada à aplicação de Publish/Subscribe está definida sobre os arquivos *.c e *.h dentro do diretório src/.
+
+A aplicação solicitada define quatro ações de usuário:
+
+1. Cadastrar o cliente em um canal enviando uma mengagem iniciada com o caractere '+'.
+
+2. Descadastar o cliente de um canal enviando uma mengagem iniciada com o caractere '-'.
+
+3. Encerrar a execução do servidor e todas as suas conexoes enviando uma mensagem "##kill".
+
+4. Enviar uma mensagem de texto para o servidor que irá redirecionar a mesma mensagem para qualquer cliente que esteja interessado. Essa ação pode ser realizada enviando uma mensagem que não se encaixa em nenhuma das condições das ações anteriores.
+
+### Servidor:
+
+O servidor é responsável por tratar as requisições feitas por clientes. Foi definido um handler, adicionado ao servidor através do método *tcp_server_t_set_request_handler*, esse handler verifica a mensagem enviada pelo cliente e, baseado nas quatro condições descritas acima, decide alguma o que será executado sobre a mensagem e cliente.
+
+O servidor utiliza apenas duas estruturas de dados auxiliares, um mapa do tipo 'string'->'lista de inteiros' que irá armazenar em qual canal('string') um determinado grupo de clientes('lista de inteiros') estão interessados, chamaremos essa estrutura de tabela de canais, e uma estrutura de tabela hash que armazenará inteiros e que será utilizada para armazenar quais os clientes que já receberam uma dada mensagem para evitar que clientes cadastrados em dois canais diferentes recebam uma mensagem duplicada em caso de essa mesma mensagem ter sido enviada para ambos os canais.
+
+### Cliente:
+O cliente é responsável por 2 coisas:
+    
+1. Receber a entrada do usuário 
+
+2. Enviar a entrada do usuário para o servidor.
+
+3. Receber as mensagens do servidor
+
+Para receber a entrada do usuário, foi implementada em src/terminal.h algumas funções uteis no manejo de entradas de usuário pelo terminal, como funções não bloqueantes que verificam se existem alguma entrada pendente. A partir disso, a lógica do cliente passa a ser bastante simples, basta testar se existe entrada pendente do usuário, caso exista, a mensagem é enviada ao servidor.
+
+Em caso de nenhuma mensagem pendente, o cliente tenta receber mensagens do servidor utilizando o método:
+
+    int tcp_client_t_receive(struct tcp_client_t* client, char* message, int length);
+
+Este método por sua vez, retorna -1 quando não existe mensagem pendente do servidor e 1 quando existe uma mensagem pendente do servidor. No segundo caso, a mensagem é salva no 2º parametro chamado *message* uma mensagem com tamanho igual ao indicado pelo 3º parametro *length*.

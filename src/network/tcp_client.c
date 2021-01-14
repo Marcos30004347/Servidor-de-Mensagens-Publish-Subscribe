@@ -46,7 +46,7 @@ int tcp_client_t_receive(struct tcp_client_t* client, char* message, int length)
 
 void tcp_client_t_send(struct tcp_client_t* client, char* message)
 {
-	write(client->client_fd, message, sizeof(message)); 
+	write(client->client_fd, message, strlen(message)); 
 }
 
 

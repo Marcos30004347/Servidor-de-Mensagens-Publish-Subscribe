@@ -11,6 +11,8 @@
 #include <string.h> 
 #include <unistd.h>
 
+
+
 struct connection_node_t {
     struct thread_t*                thread;
     int                             client;
@@ -29,6 +31,7 @@ struct thread_data {
 };
 
 struct tcp_server_t {
+    int                             flags;
     int                             server_fd;
     struct sockaddr_in              address;
     struct connection_node_t*       connections;
@@ -41,9 +44,9 @@ void* tcp_server_t_client_handler(void* c)
 {
     struct thread_data* data = (struct thread_data*)c;
     int connfd = data->connfd;
-    char request_message[500]; 
 
-    while(read(connfd, request_message, sizeof(request_message)))
+    char request_message[TCP_SERVER_MAX_PAYLOAD_LENGTH]; 
+    while(read(connfd, request_message, TCP_SERVER_MAX_PAYLOAD_LENGTH))
     {
         struct request_t req;
         struct reply_t rep;
@@ -52,13 +55,13 @@ void* tcp_server_t_client_handler(void* c)
         req.payload         = request_message;   
         req.server          = data->server;
 
-        rep.client          = data->connfd;
+        rep.client_id       = data->connfd;
 
-        mutex_t_lock(data->server->req_lock);
+        if(data->server->flags & TCP_SERVER_SYNC) mutex_t_lock(data->server->req_lock);
         data->server->request_handler(req, rep);
-        mutex_t_unlock(data->server->req_lock);
+        if(data->server->flags & TCP_SERVER_SYNC) mutex_t_unlock(data->server->req_lock);
 
-        bzero(request_message, 500); 
+        bzero(request_message, TCP_SERVER_MAX_PAYLOAD_LENGTH); 
     }
 
     free(data);
@@ -92,7 +95,7 @@ void tcp_server_t_hold_connection(struct tcp_server_t* server, struct connection
     conn->client = connection.client_fd;
 }
 
-void tcp_server_t_create(struct tcp_server_t** server)
+void tcp_server_t_create(struct tcp_server_t** server, int flags)
 {
     *server = (struct tcp_server_t*)malloc(sizeof(struct tcp_server_t));
 
@@ -100,7 +103,7 @@ void tcp_server_t_create(struct tcp_server_t** server)
 
     (*server)->server_fd = socket(AF_INET, SOCK_STREAM, 0);
     (*server)->request_handler = NULL;
-
+    (*server)->flags = flags;
     (*server)->connections = NULL;
 
     if ((*server)->server_fd == -1) { 
@@ -160,7 +163,7 @@ void tcp_server_t_terminate(struct tcp_server_t* server) {
 
     while(tmp)
     {
-        tcp_server_t_send(tmp->client, "##kill");
+        send_message_to_client(tmp->client, "##kill");
         tmp = tmp->prev;
     }
 
@@ -185,7 +188,7 @@ void tcp_server_t_set_request_handler(struct tcp_server_t* server, tcp_server_t_
     server->request_handler = handler;
 }
 
-void tcp_server_t_send(int client, const char* message)
+void send_message_to_client(int client, const char* message)
 {
     write(client, message, strlen(message)); 
 }

@@ -30,6 +30,7 @@ int main(int argc, char *argv[]) {
         stop_client = 0;
         while(!keyboard_input())
         {
+            bzero(received, 500);
             if(tcp_client_t_receive(client, received, 500) != -1)
             {
                 if(strcmp(received, "##kill") == 0)

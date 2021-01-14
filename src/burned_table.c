@@ -52,10 +52,10 @@ int burned_table_t_get_client(struct burned_table_t* table, int client)
 
     struct burned_node_t* tail = table->table[client%128];
 
-    while(tail->next && tail->key != client)
+    while(tail && tail->key != client)
         tail = tail->next;
 
-    if(tail->key == client) return 1;
+    if(tail && tail->key == client) return 1;
 
     return 0;
 }
