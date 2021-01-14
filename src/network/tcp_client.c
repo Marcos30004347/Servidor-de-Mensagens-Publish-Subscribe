@@ -12,11 +12,11 @@
 #include <sys/select.h>
 #include <fcntl.h>
 
-struct client_t;
+struct tcp_client_t;
 
-typedef void(*client_handler)(struct client_t*, char*);
+typedef void(*client_handler)(struct tcp_client_t*, char*);
 
-struct client_t
+struct tcp_client_t
 {
     struct sockaddr_in server_adress;
     int client_fd;
@@ -24,7 +24,7 @@ struct client_t
 };
 
 
-int client_t_receive(struct client_t* client, char* message, int length)
+int tcp_client_t_receive(struct tcp_client_t* client, char* message, int length)
 {
 	int sd = client->client_fd;
 
@@ -44,16 +44,16 @@ int client_t_receive(struct client_t* client, char* message, int length)
 	return 1;
 }
 
-void client_t_send(struct client_t* client, char* message)
+void tcp_client_t_send(struct tcp_client_t* client, char* message)
 {
 	write(client->client_fd, message, sizeof(message)); 
 }
 
 
-void client_t_create(struct client_t** client, const char* url, int port)
+void tcp_client_t_create(struct tcp_client_t** client, const char* url, int port)
 {
-    *client = (struct client_t*)malloc(sizeof(struct client_t));
-    struct client_t* c = *client;
+    *client = (struct tcp_client_t*)malloc(sizeof(struct tcp_client_t));
+    struct tcp_client_t* c = *client;
 
     c->client_fd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -84,14 +84,14 @@ void client_t_create(struct client_t** client, const char* url, int port)
 
 }
 
-void client_t_destroy(struct client_t* client)
+void tcp_client_t_destroy(struct tcp_client_t* client)
 {
 	// thread_t_destroy(client->receiver);
 	// mutex_t_destroy(client->lock);
 	free(client);
 }
 
-void client_t_disconnect(struct client_t* client)
+void tcp_client_t_disconnect(struct tcp_client_t* client)
 {
 	close(client->client_fd);
 }

@@ -18,8 +18,8 @@ int main(int argc, char *argv[]) {
     const char* url = argv[1];
     int port = atoi(argv[2]);
 
-    struct client_t* client = NULL;
-    client_t_create(&client, url, port);
+    struct tcp_client_t* client = NULL;
+    tcp_client_t_create(&client, url, port);
 
     char message[500] = {'\0'}, received[500] = {'\0'};
 
@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
         stop_client = 0;
         while(!keyboard_input())
         {
-            if(client_t_receive(client, received, 500) != -1)
+            if(tcp_client_t_receive(client, received, 500) != -1)
             {
                 if(strcmp(received, "##kill") == 0)
                 {
@@ -51,9 +51,9 @@ int main(int argc, char *argv[]) {
             continue;
         }
 
-        client_t_send(client, message);
+        tcp_client_t_send(client, message);
     }
 
-    client_t_disconnect(client);
-    client_t_destroy(client);
+    tcp_client_t_disconnect(client);
+    tcp_client_t_destroy(client);
 }

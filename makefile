@@ -5,13 +5,14 @@ server:
 	src/hash.c \
 	src/server.c \
 	src/channel_table.c \
-	src/network/server.c \
+	src/burned_table.c \
+	src/network/tcp_server.c \
 	src/network/async.c \
-	-o server.out -lpthread
+	-o servidor -lpthread
 
 client:
 	gcc \
 	src/client.c \
-	src/network/client.c \
+	src/network/tcp_client.c \
 	src/network/async.c \
-	-o client.out -lpthread
+	-o cliente -lpthread

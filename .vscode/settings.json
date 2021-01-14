@@ -6,6 +6,12 @@
         "random": "c",
         "system_error": "cpp",
         "shared_mutex": "c",
-        "mutex": "c"
+        "mutex": "c",
+        "string": "c",
+        "filesystem": "c",
+        "iosfwd": "c",
+        "__locale": "c",
+        "locale": "c",
+        "thread": "c"
     }
 }
