@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "network/server.h"
+#include "network/tcp_server.h"
 #include "channel_table.h"
 
 struct tcp_server_t* server = NULL;

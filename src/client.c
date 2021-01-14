@@ -3,7 +3,7 @@
 #include <string.h> 
 
 #include "network/async.h"
-#include "network/client.h"
+#include "network/tcp_client.h"
 
 #include "terminal.h"
 
