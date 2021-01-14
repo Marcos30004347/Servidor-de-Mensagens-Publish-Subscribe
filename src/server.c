@@ -1,54 +1,55 @@
-#include "network/server.h"
-#include "network/request.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
+#include "network/server.h"
 #include "channel_table.h"
 
-struct server_t* server = NULL;
+struct tcp_server_t* server = NULL;
 struct channel_table_t* channels = NULL;
 
-void add_channel(struct request_t request, struct reply_t reply)
+void channel_listen(char* payload, struct reply_t reply)
 {
-    char reply_message[500];
-    bzero(reply_message, sizeof(reply_message));
+    char reply_message[500] = {'\0'};
+    char channel[500] = {'\0'};
+    memcpy(channel, &payload[1], strlen(payload) - 1);
 
-    char* channel = (char*)request.message;
-    printf("%i\n", reply.client);
     if(channel_table_t_get_client(channels, channel, reply.client) != NULL)
     {
         sprintf(reply_message,"already subscribed +%s", channel);
-        reply_t_send(reply.client, reply_message);
-    }
-    else 
-    {
-        channel_table_t_add(channels, channel, reply.client);
-        sprintf(reply_message,"subscribed +%s", channel);
-        reply_t_send(reply.client, reply_message);
+        tcp_server_t_send(reply.client, reply_message);
+        return;
     }
 
+    channel_table_t_add(channels, channel, reply.client);
+    sprintf(reply_message,"subscribed +%s", channel);
+    tcp_server_t_send(reply.client, reply_message);
 }
 
-void remove_channel(struct request_t request, struct reply_t reply)
+void channel_mute(char* payload, struct reply_t reply)
 {
     char reply_message[500];
-    char* channel = (char*)request.message;
+    char channel[500] = {'\0'};
+    memcpy(channel, &payload[1], strlen(payload) - 1);
 
-    if(channel_table_t_get_client(channels, channel, reply.client) == NULL)
+    struct client_node_t * cli = channel_table_t_get_client(channels, channel, reply.client);
+
+    if(cli == NULL)
     {
         sprintf(reply_message,"not subscribed -%s", channel);
-        reply_t_send(reply.client, reply_message);
+        tcp_server_t_send(reply.client, reply_message);
+        return;
     }
-    else
-    {
-        channel_table_t_remove(channels, channel, reply.client);
-        sprintf(reply_message,"unsubscribed -%s", channel);
-        reply_t_send(reply.client, reply_message);
-    }
+
+    channel_table_t_remove(channels, channel, reply.client);
+    sprintf(reply_message,"unsubscribed -%s", channel);
+    tcp_server_t_send(reply.client, reply_message);
 }
 
 
-void broadcast(struct request_t request, struct reply_t reply)
+void broadcast(char* payload, struct reply_t reply)
 {
-    char* message = (char*)request.message;
+    char* message = payload;
  
     char* channel = NULL;
     char* text = NULL;
@@ -60,7 +61,7 @@ void broadcast(struct request_t request, struct reply_t reply)
         struct client_node_t* client = channel_table_t_get_channel(channels, channel);
 
         while(client) {
-            reply_t_send(client->client_id, text);
+            tcp_server_t_send(client->client_id, text);
             client = client->prev;
         }
 
@@ -68,13 +69,25 @@ void broadcast(struct request_t request, struct reply_t reply)
     }
 }
 
-void kill(struct request_t request, struct reply_t reply)
+void server_handler(struct request_t request, struct reply_t reply)
 {
-    server_t_terminate(request.server);
-    return;
+    if(strcmp(request.payload, "##kill") == 0)
+    {
+        tcp_server_t_terminate(request.server);
+    }
+    else if(request.payload[0] == '+')
+    {
+        channel_listen((char*)request.payload, reply);
+    }
+    else if(request.payload[0] == '-')
+    {
+        channel_mute((char*)request.payload, reply);
+    }
+    else 
+    {
+        broadcast((char*)request.payload, reply);
+    }
 }
-
-
 
 int main(int argc, char *argv[]) {
     if(argc < 2) 
@@ -87,16 +100,13 @@ int main(int argc, char *argv[]) {
 
     channel_table_t_create(&channels);
 
-    server_t_create(&server);
-    server_t_bind_to_port(server, port);
+    tcp_server_t_create(&server);
+    tcp_server_t_bind_to_port(server, port);
+    tcp_server_t_set_request_handler(server, server_handler);
 
-    server_t_add_endpoint(server, "/channel/listen/", add_channel);
-    server_t_add_endpoint(server, "/channel/mute/", remove_channel);
-    server_t_add_endpoint(server, "/broadcast/", broadcast);
-    server_t_add_endpoint(server, "/kill/", kill);
-
-    server_t_start(server);
+    // Start the server
+    tcp_server_t_start(server);
 
     channel_table_t_destroy(channels);
-    server_t_destroy(server);
+    tcp_server_t_destroy(server);
 }

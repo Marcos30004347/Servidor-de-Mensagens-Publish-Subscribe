@@ -9,12 +9,8 @@
 #include <strings.h>
 #include <unistd.h>
 
-#include "async.h"
-
 #include <sys/select.h>
 #include <fcntl.h>
-
-#include <errno.h>
 
 struct client_t;
 
@@ -23,41 +19,13 @@ typedef void(*client_handler)(struct client_t*, char*);
 struct client_t
 {
     struct sockaddr_in server_adress;
-
-	// struct thread_t* receiver;
-	// struct mutex_t* lock;
-
     int client_fd;
-
 	client_handler on_receive;
 };
 
 
-// void* reader_therad(void* args)
-// {
-// 	struct client_t* client = (struct client_t*)(args);
-// 	char message[500];
-
-// 	while(read(client->client_fd, message, sizeof(char)*500)) {
-// 		if(strlen(message) && client->on_receive)
-// 			client->on_receive(client, message);
-// 		bzero(message, 500);
-// 	}
-
-// 	return NULL;
-// }
-
 int client_t_receive(struct client_t* client, char* message, int length)
 {
-	// fd_set fds;
-	// FD_ZERO(&fds);
-	// FD_SET(client->client_fd, &fds);
-
-	// struct timeval tv = { 0L, 0L };
-
-	// if(!select(1, &fds, NULL, NULL, &tv)) {
-	// 	return -1;
-	// }
 	int sd = client->client_fd;
 
 	fd_set input;
@@ -76,18 +44,9 @@ int client_t_receive(struct client_t* client, char* message, int length)
 	return 1;
 }
 
-void client_t_send(struct client_t* client, const char* url, char* message) {
-	char result[500];
-	// bzero(result, 5000);
-	result[0] = '\0';
-
-	strcat(result, url);
-	strcat(result, "\r\n");
-	strcat(result, message);
-	strcat(result, "\r\n");
-	// printf("sending %s\n", result);
-
-	write(client->client_fd, result, sizeof(result)); 
+void client_t_send(struct client_t* client, char* message)
+{
+	write(client->client_fd, message, sizeof(message)); 
 }
 
 

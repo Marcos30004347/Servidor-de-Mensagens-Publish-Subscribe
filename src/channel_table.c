@@ -5,7 +5,7 @@
 #include <stdio.h> 
 #include <string.h>
 
-#include "network/hash.h"
+#include "hash.h"
 
 void client_node_t_remove(struct client_node_t** node)
 {
@@ -50,16 +50,17 @@ void channel_table_t_add(struct channel_table_t* table, const char* string, int 
     if(strcmp((*tail)->channel_name, string) != 0) {
         (*tail)->next = (struct channel_node_t*)malloc(sizeof(struct channel_node_t));
         (*tail)->next->channel_name = (char*)malloc(sizeof(char)*strlen(string));
-        memcpy(table->table[id]->channel_name, string, sizeof(char)*strlen(string));
+        memcpy((*tail)->next->channel_name, string, sizeof(char)*strlen(string));
 
         (*tail)->next->next = NULL;
-        table->table[id]->clients = NULL;
         (*tail) = (*tail)->next;
     }
 
     struct client_node_t* cli = (struct client_node_t*)malloc(sizeof(struct client_node_t));
+
     cli->next = NULL;
     cli->prev = NULL;
+
     cli->client_id = client;
 
     if(!(*tail)->clients)
@@ -72,60 +73,6 @@ void channel_table_t_add(struct channel_table_t* table, const char* string, int 
     }
     mutex_t_unlock(table->lock);
 
-}
-
-void channel_table_t_remove(struct channel_table_t* table, const char* string, int client) {
-    mutex_t_lock(table->lock);
-
-    int id = hash_string(string)%128;
-
-    if(!table->table[id]) return;
-
-    struct channel_node_t** tail = &table->table[id];
-    while(strcmp((*tail)->channel_name, string) != 0 && (*tail)->next) {
-        (*tail) = (*tail)->next;
-    }
-
-    if(strcmp((*tail)->channel_name, string) != 0) return;
-    struct client_node_t* cli = (*tail)->clients;
-     
-    while(cli && cli->client_id != client) {
-        cli = cli->prev;
-    }
-
-    if(cli) {
-        if(cli->prev)
-            cli->prev->next = cli->next;
-        if(cli->next)
-            cli->next->prev = cli->prev;
-
-        free(cli);
-    }
-
-    if(!(*tail)->clients) {
-        free((*tail)->channel_name);
-
-        (*tail) = NULL;
-        tail = NULL;
-    }
-    mutex_t_unlock(table->lock);
-}
-
-struct client_node_t* channel_table_t_get_channel(struct channel_table_t* table, const char* string)
-{
-    int id = hash_string(string)%128;
-    if(!table->table[id])
-    {
-        return NULL;
-    }
-    struct channel_node_t* tail = table->table[id];
-    while(strcmp(tail->channel_name, string) == 0 && tail->next) {
-        tail = tail->next;
-    }
-    if(strcmp(tail->channel_name, string) != 0) return NULL;
-
-
-    return tail->clients;
 }
 
 struct client_node_t* channel_table_t_get_client(struct channel_table_t* table, const char* string, int cid)
@@ -153,6 +100,49 @@ struct client_node_t* channel_table_t_get_client(struct channel_table_t* table, 
     }
     return NULL;
 }
+
+void channel_table_t_remove(struct channel_table_t* table, const char* string, int client) {
+    mutex_t_lock(table->lock);
+
+    int id = hash_string(string)%128;
+
+    struct client_node_t* cli = channel_table_t_get_client(table, string, client);
+
+    if(!cli)
+        return;
+
+    if(cli->prev)
+        cli->prev->next = cli->next;
+    if(cli->next)
+        cli->next->prev = cli->prev;
+
+
+    if(table->table[id]->clients == cli) {
+        free(table->table[id]->channel_name);
+        table->table[id]->clients = NULL;
+    }
+
+    free(cli);
+    mutex_t_unlock(table->lock);
+}
+
+struct client_node_t* channel_table_t_get_channel(struct channel_table_t* table, const char* string)
+{
+    int id = hash_string(string)%128;
+    if(!table->table[id])
+    {
+        return NULL;
+    }
+    struct channel_node_t* tail = table->table[id];
+    while(strcmp(tail->channel_name, string) == 0 && tail->next) {
+        tail = tail->next;
+    }
+    if(strcmp(tail->channel_name, string) != 0) return NULL;
+
+
+    return tail->clients;
+}
+
 
 
 void channel_table_t_destroy(struct channel_table_t* table)

@@ -14,7 +14,7 @@ typedef void(*client_handler)(struct client_t*, char*);
 /**
  * Send a @message to the server using the @url endpoint.
  */
-void client_t_send(struct client_t* client, const char* url, char* message);
+void client_t_send(struct client_t* client, char* message);
 
 /**
  * Create a client_t structure.
