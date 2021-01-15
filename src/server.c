@@ -8,6 +8,7 @@
 #define TCP_SERVER_MAX_PAYLOAD_LENGTH 500
 #include "network/tcp_server.h"
 
+#include "parser.h"
 #include "channel_table.h"
 #include "burned_table.h"
 
@@ -100,13 +101,13 @@ void broadcast_in_channel(const char* payload, unsigned payload_len, int client)
 
 void server_handler(struct request_t request, struct reply_t reply)
 {
-    LOG("Payload: %s!\n", request.payload);
+    // LOG("Payload: %s!\n", request.payload);
 
-    LOG("Verificando payload!\n");
+    // LOG("Verificando payload!\n");
     unsigned long m_size = strlen(request.payload);
 
     for(int i=0; i<m_size; i++) {
-        LOG("%c = %i\n", request.payload[i], request.payload[i]);
+        // LOG("%c = %i\n", request.payload[i], request.payload[i]);
         if(!verify_char(request.payload[i]))
         {
             tcp_server_t_disconnect_client(request.server, reply.client_id);
@@ -114,7 +115,7 @@ void server_handler(struct request_t request, struct reply_t reply)
         }
     }
 
-    LOG("[PAYLOAD RECEBIDO]: tamanho=%lu\n", strlen(request.payload));
+    // // LOG("[PAYLOAD RECEBIDO]: tamanho=%lu\n", strlen(request.payload));
 
     if(strcmp(request.payload, "##kill\n") == 0)  tcp_server_t_terminate(request.server);
     else if(request.payload[0] == '+')          register_to_channel(request.payload, request.payload_length, reply.client_id);
@@ -123,13 +124,16 @@ void server_handler(struct request_t request, struct reply_t reply)
 }
 
 int main(int argc, char *argv[]) {
-    LOG("Starting Publish/Subscribe Server!\n");
+    // LOG("Starting Publish/Subscribe Server!\n");
 
     if(argc < 2) 
     {
         printf("Argumentos insuficientes!\n");
         return -1;
     }
+
+    protocol_lexer_t* lexer;
+    protocol_lexer_t_create(&lexer);
 
     int port = atoi(argv[1]);
 
@@ -143,9 +147,9 @@ int main(int argc, char *argv[]) {
     tcp_server_t_bind_to_port(server, port);
     tcp_server_t_start(server);
 
-    LOG("Terminating Publish/Subscribe Server!\n");
+    // LOG("Terminating Publish/Subscribe Server!\n");
     channel_table_t_destroy(channels);
-    LOG("Terminating Publish/Subscribe Server!\n");
+    // LOG("Terminating Publish/Subscribe Server!\n");
     tcp_server_t_destroy(server);
-    LOG("Terminating Publish/Subscribe Server!\n");
+    // LOG("Terminating Publish/Subscribe Server!\n");
 }

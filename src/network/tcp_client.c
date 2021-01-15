@@ -65,11 +65,9 @@ void tcp_client_t_create(struct tcp_client_t** client, const char* url, int port
 		exit(0); 
 	}
 
-
     c->server_adress.sin_family = AF_INET; 
 	c->server_adress.sin_addr.s_addr = inet_addr(url); 
 	c->server_adress.sin_port = htons(port); 
-	// c->on_receive = handler;
 
 	int conn = connect(c->client_fd, (struct sockaddr *)&c->server_adress, sizeof(c->server_adress));
 	if (conn != 0){
@@ -79,18 +77,10 @@ void tcp_client_t_create(struct tcp_client_t** client, const char* url, int port
 
 	int flags = fcntl(c->client_fd, F_GETFL);
 	fcntl(c->client_fd, F_SETFL ,flags | O_NONBLOCK);
-	// if (connect(c->client_fd, (struct sockaddr *)&c->server_adress, sizeof(c->server_adress)) != 0) { 
-	// } 
-
-	// mutex_t_create(&c->lock);	
-	// thread_t_create(&c->receiver, reader_therad, c);
-
 }
 
 void tcp_client_t_destroy(struct tcp_client_t* client)
 {
-	// thread_t_destroy(client->receiver);
-	// mutex_t_destroy(client->lock);
 	free(client);
 }
 

@@ -55,13 +55,10 @@ int main(int argc, char *argv[]) {
     
         if(stop_client) break;
 
-        bzero(message, 500);
+        bzero(message, TCP_CLIENT_MAX_PAYLOAD_LENGTH);
 
-        if(read_inputed_line(message, 500) == -1)
-        {
-            printf("Não é possivel enviar mensagens maiores que 500 caracteres!");
+        if(read_inputed_line(message, TCP_CLIENT_MAX_PAYLOAD_LENGTH) == -1)
             continue;
-        }
 
         tcp_client_t_send(client, message);
     }

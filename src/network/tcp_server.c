@@ -11,11 +11,10 @@
 #include <string.h> 
 #include <unistd.h>
 
-
-
 struct connection_node_t {
-    struct thread_t*                thread;
     int                             client;
+    struct thread_t*                thread;
+    
     struct connection_node_t*       next;
     struct connection_node_t*       prev;
 };
@@ -143,12 +142,9 @@ void tcp_server_t_create(struct tcp_server_t** server, int flags)
 
 void tcp_server_t_destroy(struct tcp_server_t* server)
 {
-    printf("asdasdasdas\n");
     struct connection_node_t * tmp;
-    printf("asdasdasdas\n");
     while (server->connections)
     {
-        printf("asdasdasdas\n");
         tmp = server->connections;
 
         server->connections = server->connections->prev;
@@ -163,7 +159,8 @@ void tcp_server_t_destroy(struct tcp_server_t* server)
     free(server);
 }
 
-struct connection_t tcp_server_t_accept_connection(struct tcp_server_t* server) {
+struct connection_t tcp_server_t_accept_connection(struct tcp_server_t* server)
+{
     struct connection_t conn;
     socklen_t len = sizeof(conn.client_address); 
     conn.client_fd = accept(server->server_fd, (struct sockaddr*)&conn.client_address, &len); 
@@ -186,8 +183,8 @@ void tcp_server_t_start(struct tcp_server_t* server)
     }
 }
 
-void tcp_server_t_terminate(struct tcp_server_t* server) {
-
+void tcp_server_t_terminate(struct tcp_server_t* server)
+{
     struct connection_node_t * tmp = server->connections;
 
     while(tmp)
@@ -240,7 +237,6 @@ void tcp_server_t_disconnect_client(struct tcp_server_t* server, int client)
         thread_t_destroy((*connections)->thread);
         free((*connections));
         *connections = NULL;
-        // connections = NULL;
     }
 }
 
