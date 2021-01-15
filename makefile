@@ -15,7 +15,7 @@ server:
 	src/protocol/parser.c \
 	src/protocol/lexer.c \
 	src/protocol/token.c \
-	src/channel_table.c \
+	src/tag_table.c \
 	src/burned_table.c \
 	src/network/tcp_server.c \
 	src/network/async.c \
@@ -24,6 +24,7 @@ server:
 client:
 	gcc \
 	src/client.c \
+	src/terminal.c \
 	src/network/tcp_client.c \
 	src/network/async.c \
 	src/protocol/parser.c \

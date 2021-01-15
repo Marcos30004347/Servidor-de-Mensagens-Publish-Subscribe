@@ -10,7 +10,7 @@ char* copy_value(protocol_token_t* token)
     return r;
 }
 
-char* concat_words(char* str0, char* str1)
+char* concat_words(const char* str0, const char* str1)
 {
     unsigned long l0 = strlen(str0);
     unsigned long l1 = strlen(str1);

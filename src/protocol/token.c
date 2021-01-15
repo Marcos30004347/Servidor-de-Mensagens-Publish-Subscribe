@@ -30,7 +30,7 @@ protocol_token_type_t protocol_token_t_get_type(protocol_token_t* token)
     return token->type;
 }
 
-char* protocol_token_t_get_value(protocol_token_t* token)
+const char* protocol_token_t_get_value(protocol_token_t* token)
 {
     return token->value;
 }

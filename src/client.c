@@ -6,6 +6,7 @@
 
 #define TCP_CLIENT_MAX_PAYLOAD_LENGTH 500
 #include "network/tcp_client.h"
+
 #include "protocol/parser.h"
 
 #include "terminal.h"

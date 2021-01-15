@@ -1,15 +1,20 @@
+// STD
 #include<string.h>
 #include<stdlib.h>
 
+// UTILS
 #define DEBUG
 #include "utils.h"
 
+// NETWORK TCP
 #define TCP_SERVER_MAX_PAYLOAD_LENGTH 500
 #include "network/tcp_server.h"
 
+// PROTOCOL
 #include "protocol/parser.h"
 
-#include "channel_table.h"
+// APPLICATION
+#include "tag_table.h"
 #include "burned_table.h"
 
 
@@ -20,9 +25,9 @@ struct tcp_server_t* server = NULL;
 
 
 /**
- * @brief Table responsable for holding the registered tags and clients.
+ * @brief Table responsable for holding all the registered tags and clients.
  */
-struct channel_table_t* channels = NULL;
+struct tag_table_t* channels = NULL;
 
 
 /**
@@ -31,16 +36,16 @@ struct channel_table_t* channels = NULL;
 void register_to_tag(const char* payload, unsigned int payload_length, int client, protocol_ast_t* ast)
 {
     char reply_message[500] = {'\0'};
-    protocol_ast_t* channel = ast->ast_node_child;
+    protocol_ast_t* channel = ast;
 
-    if(channel_table_t_get_client(channels, channel->ast_node_add_value, client) != NULL)
+    if(tag_table_t_get_client(channels, channel->ast_node_add_value, client) != NULL)
     {
         sprintf(reply_message,"already subscribed +%s\n", channel->ast_node_add_value);
         send_message_to_client(client, reply_message);
         return;
     }
 
-    channel_table_t_add(channels, channel->ast_node_add_value, client);
+    tag_table_t_add(channels, channel->ast_node_add_value, client);
     sprintf(reply_message,"subscribed +%s\n", channel->ast_node_add_value);
 
     send_message_to_client(client, reply_message);
@@ -52,9 +57,9 @@ void register_to_tag(const char* payload, unsigned int payload_length, int clien
 void unregister_from_tag(const char* payload, unsigned int payload_length, int client, protocol_ast_t* ast)
 {
     char reply_message[500];
-    protocol_ast_t* channel = ast->ast_node_child;
+    protocol_ast_t* channel = ast;
 
-    struct client_node_t * cli = channel_table_t_get_client(channels, channel->ast_node_rem_value, client);
+    struct client_node_t * cli = tag_table_t_get_client(channels, channel->ast_node_rem_value, client);
 
     if(cli == NULL)
     {
@@ -63,7 +68,7 @@ void unregister_from_tag(const char* payload, unsigned int payload_length, int c
         return;
     }
 
-    channel_table_t_remove(channels, channel->ast_node_rem_value, client);
+    tag_table_t_remove(channels, channel->ast_node_rem_value, client);
 
     sprintf(reply_message, "unsubscribed -%s\n", channel->ast_node_rem_value);
     send_message_to_client(client, reply_message);
@@ -76,14 +81,14 @@ void broadcast_in_channel(const char* payload, unsigned payload_len, int client,
 {
     struct burned_table_t* table = NULL;
     char reply_message[500];
+    burned_table_t_create(&table);
 
     while(ast)
     {
         if(ast->ast_node_type == PROTOCOL_AST_TAG)
         {
-            burned_table_t_create(&table);
             unsigned long message_length = payload_len;
-            struct client_node_t* client = channel_table_t_get_channel(channels, ast->ast_node_tag_value);
+            struct client_node_t* client = tag_table_t_get_tag(channels, ast->ast_node_tag_value);
             while(client) {
                 if(burned_table_t_get_client(table, client->client_id))
                     continue;
@@ -95,10 +100,11 @@ void broadcast_in_channel(const char* payload, unsigned payload_len, int client,
                 client = client->prev;
             }
 
-            burned_table_t_destroy(&table);
         }
         ast = ast->ast_node_child;
     }
+
+    burned_table_t_destroy(&table);
 }
 
 /**
@@ -141,7 +147,10 @@ void server_handler(struct request_t request, struct reply_t reply)
             reply.client_id,
             abstract_syntax_tree->ast_node_child
         );
-    else if(abstract_syntax_tree->ast_node_child->ast_node_type == PROTOCOL_AST_MESS)
+    else if(
+        abstract_syntax_tree->ast_node_child->ast_node_type == PROTOCOL_AST_MESS
+        || abstract_syntax_tree->ast_node_child->ast_node_type == PROTOCOL_AST_TAG
+    )
         broadcast_in_channel(
             request.payload,
             request.payload_length,
@@ -171,7 +180,7 @@ int main(int argc, char *argv[]) {
 
     int port = atoi(argv[1]);
 
-    channel_table_t_create(&channels);
+    tag_table_t_create(&channels);
 
     tcp_server_t_create(&server, TCP_SERVER_SYNC);
     tcp_server_t_set_disconnect_message(server, "##kill");
@@ -179,6 +188,6 @@ int main(int argc, char *argv[]) {
     tcp_server_t_bind_to_port(server, port);
     tcp_server_t_start(server);
 
-    channel_table_t_destroy(channels);
+    tag_table_t_destroy(channels);
     tcp_server_t_destroy(server);
 }

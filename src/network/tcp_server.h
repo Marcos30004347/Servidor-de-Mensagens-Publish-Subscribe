@@ -12,6 +12,7 @@
  * 
  */
 struct tcp_server_t;
+typedef struct tcp_server_t tcp_server_t;
 
 /**
  * @brief This structure holds the information that was
@@ -35,6 +36,7 @@ struct request_t
      */
     struct tcp_server_t* server;
 };
+typedef struct request_t request_t;
 
 /**
  * @brief This structure holds the information about who
@@ -50,6 +52,7 @@ struct reply_t
      */
     int client_id;
 };
+typedef struct reply_t reply_t;
 
 
 /**

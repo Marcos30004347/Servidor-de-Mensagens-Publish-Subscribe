@@ -50,7 +50,6 @@ int main()
     parse("+te^ste\n");
     parse("+te~ste\n");
 
-
     parse("+teste\n");
     parse("+C#\n");
     parse("-teste\n");
