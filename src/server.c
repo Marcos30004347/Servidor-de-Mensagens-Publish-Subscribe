@@ -37,7 +37,6 @@ void register_to_tag(const char* payload, unsigned int payload_length, int clien
 {
     char reply_message[500] = {'\0'};
     protocol_ast_t* channel = ast;
-
     if(tag_table_t_get_client(channels, channel->ast_node_add_value, client) != NULL)
     {
         sprintf(reply_message,"already subscribed +%s\n", channel->ast_node_add_value);
@@ -112,7 +111,7 @@ void broadcast_in_channel(const char* payload, unsigned payload_len, int client,
  */
 void server_handler(struct request_t request, struct reply_t reply)
 {
-    LOG("PAYLOAD: %s", request.payload);
+    LOG("[PAYLOAD]: '%s'", request.payload);
     if(strcmp(request.payload, "##kill\n") == 0)    tcp_server_t_terminate(request.server);
 
     unsigned long m_size = strlen(request.payload);
@@ -124,9 +123,9 @@ void server_handler(struct request_t request, struct reply_t reply)
 
     int error = protocol_ast_t_parse(lexer, &abstract_syntax_tree);
 
-    LOG("[AST]:");
+    LOG("[AST]: '");
     protocol_ast_t_print(abstract_syntax_tree);
-    printf("\n");
+    printf("'\n");
 
     if(error)
     {
@@ -134,6 +133,11 @@ void server_handler(struct request_t request, struct reply_t reply)
         protocol_lexer_t_destroy(&lexer);
         protocol_ast_t_destroy(&abstract_syntax_tree);
         tcp_server_t_disconnect_client(request.server, reply.client_id);
+        return;
+    }
+
+    if(!abstract_syntax_tree->ast_node_child) {
+        printf("Empty Payload!\n");
         return;
     }
 

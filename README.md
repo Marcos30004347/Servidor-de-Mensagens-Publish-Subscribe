@@ -8,31 +8,25 @@
 
 </br>
 
-### **Aluno:** Marcos Vinicius Moreira Santos
 
-</br>
 
 
 # Relatório: Trabalho Prático - Aplicação Publish/Subscribe
+### **Aluno:** Marcos Vinicius Moreira Santos
+</br>
+
+
 ## Introdução
 <p style="font-family: arial; font-size:10pt">
 O código foi dividido em 2 modulos, uma biblioteca de código que está em localizada em src/netowrk que abstrai um servidor e cliente TCP e que foi usada para a implementação da aplicação Publish/Subscribe permitindo que as regras de negócio da aplicação fiquem mais limpas e de fácil compreensão, uma biblioteca localizada em src/protocol que contém um lexer e parser para o protocolo, e o código da aplicação em src/.
 </p>
 
-### Compatibilidade:
-<p style="font-family:arial; font-size:10pt">
-A aplicação foi testada somente em sistemas **UNIX**, e portanto a compatibilidade com outros sistemas não é garantida.
-</p>
-
-# Network:
+## Network:
 
 ### Introdução:
 
 <p style="font-family:arial; font-size:10pt">
-Os arquivos localizados em src/network são os arquivos que abstraem a implementação de uma estrutura de servidor e cliente para comunicação sobre a network utilizando o protocolo TCP/IP. Além disso, também foi implementado estruturas de dados para programação assíncrona como threads e mutexes.
-</p>
-<p style="font-family:arial; font-size:10pt">
-A biblioteca foi construida utilizando UNIX sockets e POSIX threads além da biblioteca padrão do C99.
+Os arquivos localizados em src/network são os arquivos que abstraem a implementação de uma estrutura de servidor e cliente para comunicação sobre a network utilizando o protocolo TCP/IP. Além disso, também foi implementado estruturas de dados para programação assíncrona como threads e mutexes. A biblioteca foi construida utilizando UNIX sockets e POSIX threads além da biblioteca padrão do C99.
 </p>
 
 ### Servidor TCP:
@@ -54,12 +48,6 @@ O comportamento do servidor é definido utilizando-se o método:
 <p style="font-family:arial; font-size:10pt">
 Este método irá definir como o servidor deverá processar uma mensagem qualquer recebida de algum cliente. Uma mensagem so é repassada ao handler quando o servidor detectar um '\n', se essa condição não ocorrerm o server continuará esperando uma nova mensagem que será tratada como a continuação da mensagem anterior.
 </p>
-
-<p style="font-family:arial; font-size:10pt">
-Estes metodos precisam seguir a interface:
-</p>
-
-    void(*)(struct request_t, struct reply_t);
 
 <p style="font-family:arial; font-size:10pt">
 As estruturas request_t e reply_t são estruturas que armazenam informações uteis como o cliente que fez a requisição, o servidor que está processando a requisição, a mensagem de payload e o tamanho da mensagem enviada pelo cliente.
@@ -93,7 +81,7 @@ O uso de threads foi necessário para garantir que um servidor possa servir a ma
 Para armazenar as conexoes ativas com o servidor, foi utilizado uma estrutura de lista encadeada que pode ser utilizada simultaneamente por multiplas threads, sincronizada através do uso de mutexes, onde cada nó armazena as informações references à uma conexão/cliente.
 </p>
 
-# Aplicação Publish/Subscribe:
+## Aplicação Publish/Subscribe:
 
 <p style="font-family:arial; font-size:10pt">
 Toda a lógica relacionada à aplicação de Publish/Subscribe está definida sobre os arquivos *.c e *.h dentro do diretório src/.
@@ -101,11 +89,19 @@ Toda a lógica relacionada à aplicação de Publish/Subscribe está definida so
 <p style="font-family:arial; font-size:10pt">
 A aplicação solicitada define quatro ações de usuário:
 </p>
-
+<p style="font-family:arial; font-size:10pt">
 1. Cadastrar o cliente em uma tag enviando uma mengagem iniciada com o caractere '+'.
+</p>
+
+<p style="font-family:arial; font-size:10pt">
 2. Descadastar o cliente de uma tag enviando uma mengagem iniciada com o caractere '-'.
+</p>
+<p style="font-family:arial; font-size:10pt">
 3. Encerrar a execução do servidor e todas as suas conexoes enviando uma mensagem "##kill".
+</p>
+<p style="font-family:arial; font-size:10pt">
 4. Enviar uma mensagem de texto para o servidor que irá redirecionar a mesma mensagem para qualquer cliente que esteja interessado utilizando a sintaxe *"mensagem #tag"*. Essa ação pode ser realizada enviando uma mensagem que não se encaixa em nenhuma das condições das ações anteriores.
+</p>
 
 ### Protocolo:
 <p style="font-family:arial; font-size:10pt">
@@ -121,10 +117,12 @@ Ou seja, mensagens devem ser codificadas de acordo com a tabela ASCII. A partir 
 <p style="font-family:arial; font-size:10pt">
 Outra requisição do trabalho é:
 </p>
-
-    1) As mensagens de interesse (+tag) e desinteresse (-tag) devem ter o sinal (+ ou -) no primeiro caractere e apenas um tag, sem nenhum texto adicional.
-
-    2) Tags e especificações de interesse e desinteresse devem estar precedidas e sucedidas por espaço, início da mensagem, ou término da mensagem. Em outras palavras, um string como “#dota#overwatch” não será considerado como tags.
+<p style="font-family:arial; font-size:10pt">
+1) As mensagens de interesse (+tag) e desinteresse (-tag) devem ter o sinal (+ ou -) no primeiro caractere e apenas um tag, sem nenhum texto adicional.
+</p>
+<p style="font-family:arial; font-size:10pt">
+2) Tags e especificações de interesse e desinteresse devem estar precedidas e sucedidas por espaço, início da mensagem, ou término da mensagem. Em outras palavras, um string como “#dota#overwatch” não será considerado como tags.
+</p>
 
 <p style="font-family:arial; font-size:10pt">
 A primeira sentença define que mensagens de interesse e desinteresse devem conter (+|-) no primeiro caractere. Porém, a segunda sentença diz que as especificações de interesse e desinteresse devem estar precedidas e sucedidas por expaço, ou seja, o primeiro caractere poderia ser um espaço seguido de um (+|-), portanto temos duas declarações conflitantes. Foi escolhido a primeira sobre a segunda por ser mais especifica.
@@ -141,31 +139,16 @@ A partir disso, para o desenvolvimento do parser para o protocolo, foi utilizado
     S -> (M*( \#'P)\* M\*)\* | +P | -P | P;
     Q -> , | . | ? | ! | : | ; | + | - | * | / | = | @ | # | $ | $ | % | ( | ) | { | };
     L -> [a-z] | [A-z] | [0-9];
-    P -> L* | QL | LPL | LP;
+    P -> L* | PQP;
     M -> ESPAÇO\*P(ESPAÇO\*P)*;
 
 <p style="font-family:arial; font-size:10pt">
 Onde ESPAÇO equivale à um espaço (' '), S ao Protocolo e representa a variavel inicial da gramática, Q aos possiveis sinais, L às possíveis letras, P às palavras e M às frases.
 </p>
 
-Exemplos de mensagens e mensagens e suas interpretações:
-
-    1. "+teste\n" - Registre na tag "teste".
-    2. "+C#\n" - Registre na tag "C#".
-    3. "-teste\n" - Desregistre na tag "C#".
-    4. "teste #teste\n" - Envie "teste" na tag "teste".
-    5. " #teste hahaha\n" - Envie "#teste hahaha" na tag "teste".
-    6. "teste #teste1 #teste2\n" - Envie "teste #teste1 #teste2" na tag "teste1" e na tag "teste2".
-    7. "oi #teste0 oi #teste1\n" - Envie "oi #teste0 oi #teste1" nas tags "teste0" e "teste1".
-    8. "testando testando #teste ah nao #teste\n" - Envie "testando testando #teste0 ah nao #teste1" nas tags "teste0" e "teste1".
-    9. "#testando ctest#ando #teste1 ah nao #teste2\n" - Envie "#testando ctest#ando #teste ah nao #teste" nas tags "teste1" e "teste2".
-    10. "#testando#test#ando #teste1 ah nao #teste2\n" - Envie "#testando#test#ando #teste1 ah nao #teste2" nas tags "teste1" e "teste2".
-    11. "kkkkk #C#\n"  - Envie "kkkkk #C#" na tag "C#".
-
 <p style="font-family:arial; font-size:10pt">
 Foi definido em src/protocol um lexer e parser que seguem essa gramárica.
 </p>
-
 
 ### O Servidor:
 
@@ -193,20 +176,10 @@ O cliente é responsável por 2 coisas:
 3. Receber as mensagens do servidor
 
 <p style="font-family:arial; font-size:10pt">
-Para receber a entrada do usuário, foi implementada em src/terminal.h algumas funções uteis no manejo de entradas de usuário pelo terminal, como funções não bloqueantes que verificam se existem alguma entrada pendente. A partir disso, a lógica do cliente passa a ser bastante simples, basta testar se existe entrada pendente do usuário, caso exista, a mensagem é enviada ao servidor.
+Para receber a entrada do usuário, foi implementada em src/terminal.h algumas funções uteis no manejo de entradas de usuário pelo terminal, como funções não bloqueantes que verificam se existem alguma entrada pendente. A partir disso, a lógica do cliente passa a ser bastante simples, basta testar se existe entrada pendente do usuário, caso exista, a mensagem é enviada ao servidor. Em caso de nenhuma entrada pendente, o cliente tenta ler mensagens enviadas pelo servidor.
 </p>
 
-<p style="font-family:arial; font-size:10pt">
-Em caso de nenhuma mensagem pendente, o cliente tenta receber mensagens do servidor utilizando o método:
-</p>
-
-    int tcp_client_t_receive(struct tcp_client_t* client, char* message, int length);
-
-<p style="font-family:arial; font-size:10pt">
-Este método retorna -1 quando não existem mensagems pendentes e 1 quando existe pelo menos uma mensagem pendente do servidor. No segundo caso, é salva no 2º parametro chamado *message* uma mensagem com tamanho igual ao indicado pelo 3º parametro *length*.
-</p>
-
-### Conclusão:
+## Conclusão:
 
 <p style="font-family:arial; font-size:10pt">
 Durante a implementação desse Trabalho foi implementado um Servidor e Cliente que utilizam o protocolo TCP/IP, o que possibilitou entender com mais detalhes o funcionamento deste Protocolo.

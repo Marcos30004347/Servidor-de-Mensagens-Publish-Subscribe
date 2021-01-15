@@ -85,8 +85,6 @@ void* tcp_server_t_client_handler(void* c)
 
                 bzero(message, i);
                 memmove(message, message + i + 1, message_length - i - 1);
-    
-                break;
             }
         }
     }
