@@ -37,4 +37,6 @@ int protocol_ast_t_parse_rem(protocol_lexer_t* lexer, protocol_ast_t** ast);
 int protocol_ast_t_parse_phrase(protocol_lexer_t* lexer, protocol_ast_t** ast);
 int protocol_ast_t_parse_message(protocol_lexer_t* lexer, protocol_ast_t** ast);
 
+void protocol_ast_t_destroy(protocol_ast_t** parser);
+
 #endif

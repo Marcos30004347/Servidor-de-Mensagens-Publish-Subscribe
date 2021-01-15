@@ -1,6 +1,5 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include<string.h>
+#include<stdlib.h>
 
 #define DEBUG
 #include "utils.h"
@@ -8,119 +7,157 @@
 #define TCP_SERVER_MAX_PAYLOAD_LENGTH 500
 #include "network/tcp_server.h"
 
-#include "parser.h"
+#include "protocol/parser.h"
+
 #include "channel_table.h"
 #include "burned_table.h"
 
+
+/**
+ * @brief The TCP Server of the application.
+ */
 struct tcp_server_t* server = NULL;
+
+
+/**
+ * @brief Table responsable for holding the registered tags and clients.
+ */
 struct channel_table_t* channels = NULL;
 
-void register_to_channel(const char* payload, unsigned int payload_length, int client)
+
+/**
+ * @brief This function add a client to a tag
+ */
+void register_to_tag(const char* payload, unsigned int payload_length, int client, protocol_ast_t* ast)
 {
     char reply_message[500] = {'\0'};
-    char channel[500] = {'\0'};
+    protocol_ast_t* channel = ast->ast_node_child;
 
-    memcpy(channel, &payload[1], payload_length - 2);
-
-    if(channel_table_t_get_client(channels, channel, client) != NULL)
+    if(channel_table_t_get_client(channels, channel->ast_node_add_value, client) != NULL)
     {
-        sprintf(reply_message,"already subscribed +%s\n", channel);
+        sprintf(reply_message,"already subscribed +%s\n", channel->ast_node_add_value);
         send_message_to_client(client, reply_message);
         return;
     }
-    printf("asdasd\n");
-    channel_table_t_add(channels, channel, client);
-    sprintf(reply_message,"subscribed +%s\n", channel);
+
+    channel_table_t_add(channels, channel->ast_node_add_value, client);
+    sprintf(reply_message,"subscribed +%s\n", channel->ast_node_add_value);
 
     send_message_to_client(client, reply_message);
 }
 
-void unregister_from_channel(const char* payload, unsigned int payload_length, int client)
+/**
+ * @brief This function removes a client from a tag
+ */
+void unregister_from_tag(const char* payload, unsigned int payload_length, int client, protocol_ast_t* ast)
 {
     char reply_message[500];
+    protocol_ast_t* channel = ast->ast_node_child;
 
-    char channel[500] = {'\0'};
-    memcpy(channel, &payload[1], payload_length - 2);
-
-    struct client_node_t * cli = channel_table_t_get_client(channels, channel, client);
+    struct client_node_t * cli = channel_table_t_get_client(channels, channel->ast_node_rem_value, client);
 
     if(cli == NULL)
     {
-        sprintf(reply_message,"not subscribed -%s\n", channel);
+        sprintf(reply_message,"not subscribed -%s\n", channel->ast_node_rem_value);
         send_message_to_client(client, reply_message);
         return;
     }
 
-    channel_table_t_remove(channels, channel, client);
+    channel_table_t_remove(channels, channel->ast_node_rem_value, client);
 
-    sprintf(reply_message, "unsubscribed -%s\n", channel);
+    sprintf(reply_message, "unsubscribed -%s\n", channel->ast_node_rem_value);
     send_message_to_client(client, reply_message);
 }
 
-
-void broadcast_in_channel(const char* payload, unsigned payload_len, int client)
+/**
+ * @brief This function broadcast a message to some tags.
+ */
+void broadcast_in_channel(const char* payload, unsigned payload_len, int client, protocol_ast_t* ast)
 {
     struct burned_table_t* table = NULL;
     char reply_message[500];
 
-    char message[TCP_SERVER_MAX_PAYLOAD_LENGTH] = {'\0'};
-    
-    memcpy(message, payload, payload_len);
-
-    char** tags = NULL;
-    unsigned long n_tags = 0;
-
-    if(parse_message(message, strlen(message), &tags, &n_tags) < 0)
+    while(ast)
     {
-        return;
-    }
+        if(ast->ast_node_type == PROTOCOL_AST_TAG)
+        {
+            burned_table_t_create(&table);
+            unsigned long message_length = payload_len;
+            struct client_node_t* client = channel_table_t_get_channel(channels, ast->ast_node_tag_value);
+            while(client) {
+                if(burned_table_t_get_client(table, client->client_id))
+                    continue;
+                
+                burned_table_t_add(table, client->client_id);
 
-    for(int i=0; i<n_tags; i++)
-    {
-        burned_table_t_create(&table);
+                send_message_to_client(client->client_id, payload);
+                
+                client = client->prev;
+            }
 
-        unsigned long message_length = payload_len;
-        
-        struct client_node_t* client = channel_table_t_get_channel(channels, tags[i]);
-        
-        while(client) {
-            if(burned_table_t_get_client(table, client->client_id))
-                continue;
-            
-            burned_table_t_add(table, client->client_id);
-
-            send_message_to_client(client->client_id, message);
-            
-            client = client->prev;
+            burned_table_t_destroy(&table);
         }
-
-        burned_table_t_destroy(&table);
-
+        ast = ast->ast_node_child;
     }
 }
 
+/**
+ * @brief This function is responsable for handling the server requests.
+ */
 void server_handler(struct request_t request, struct reply_t reply)
 {
-    // LOG("Payload: %s!\n", request.payload);
+    LOG("%s", request.payload);
+    if(strcmp(request.payload, "##kill\n") == 0)    tcp_server_t_terminate(request.server);
 
-    // LOG("Verificando payload!\n");
     unsigned long m_size = strlen(request.payload);
 
-    for(int i=0; i<m_size; i++) {
-        // LOG("%c = %i\n", request.payload[i], request.payload[i]);
-        if(!verify_char(request.payload[i]))
-        {
-            tcp_server_t_disconnect_client(request.server, reply.client_id);
-            return;
-        }
+    protocol_lexer_t* lexer = NULL;
+    protocol_ast_t* abstract_syntax_tree = NULL;
+
+    protocol_lexer_t_create(&lexer, request.payload, request.payload_length);
+
+    int error = protocol_ast_t_parse(lexer, &abstract_syntax_tree);
+
+    if(error)
+    {
+        printf("Syntax Error!\n");
+        protocol_lexer_t_destroy(&lexer);
+        protocol_ast_t_destroy(&abstract_syntax_tree);
+        tcp_server_t_disconnect_client(request.server, reply.client_id);
+        return;
     }
 
-    // // LOG("[PAYLOAD RECEBIDO]: tamanho=%lu\n", strlen(request.payload));
+    if(abstract_syntax_tree->ast_node_child->ast_node_type == PROTOCOL_AST_ADD)
+        register_to_tag(
+            request.payload,
+            request.payload_length,
+            reply.client_id,
+            abstract_syntax_tree->ast_node_child
+        );
+    else if(abstract_syntax_tree->ast_node_child->ast_node_type == PROTOCOL_AST_REM)
+        unregister_from_tag(
+            request.payload,
+            request.payload_length,
+            reply.client_id,
+            abstract_syntax_tree->ast_node_child
+        );
+    else if(abstract_syntax_tree->ast_node_child->ast_node_type == PROTOCOL_AST_MESS)
+        broadcast_in_channel(
+            request.payload,
+            request.payload_length,
+            reply.client_id,
+            abstract_syntax_tree->ast_node_child
+        );
+    else    
+        printf(
+            "Unknow Operation of type '%i' in '%s'!\n",
+            abstract_syntax_tree->ast_node_child->ast_node_type,
+            request.payload
+        );
 
-    if(strcmp(request.payload, "##kill\n") == 0)  tcp_server_t_terminate(request.server);
-    else if(request.payload[0] == '+')          register_to_channel(request.payload, request.payload_length, reply.client_id);
-    else if(request.payload[0] == '-')          unregister_from_channel(request.payload, request.payload_length, reply.client_id);
-    else                                        broadcast_in_channel(request.payload, request.payload_length, reply.client_id);
+
+    protocol_lexer_t_destroy(&lexer);
+    protocol_ast_t_destroy(&abstract_syntax_tree);
 }
 
 int main(int argc, char *argv[]) {
@@ -132,24 +169,16 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    protocol_lexer_t* lexer;
-    protocol_lexer_t_create(&lexer);
-
     int port = atoi(argv[1]);
 
     channel_table_t_create(&channels);
 
     tcp_server_t_create(&server, TCP_SERVER_SYNC);
-
     tcp_server_t_set_disconnect_message(server, "##kill");
     tcp_server_t_set_request_handler(server, server_handler);
-
     tcp_server_t_bind_to_port(server, port);
     tcp_server_t_start(server);
 
-    // LOG("Terminating Publish/Subscribe Server!\n");
     channel_table_t_destroy(channels);
-    // LOG("Terminating Publish/Subscribe Server!\n");
     tcp_server_t_destroy(server);
-    // LOG("Terminating Publish/Subscribe Server!\n");
 }

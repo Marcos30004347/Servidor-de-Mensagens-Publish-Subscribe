@@ -109,8 +109,6 @@ A aplicação solicitada define quatro ações de usuário:
 3. Encerrar a execução do servidor e todas as suas conexoes enviando uma mensagem "##kill".
 4. Enviar uma mensagem de texto para o servidor que irá redirecionar a mesma mensagem para qualquer cliente que esteja interessado utilizando a sintaxe *"mensagem #tag"*. Essa ação pode ser realizada enviando uma mensagem que não se encaixa em nenhuma das condições das ações anteriores.
 
-### Observaçõs:
-
 <p style="font-family:arial; font-size:10pt">
 A descrição do trabalho prático define:
 </p>
@@ -157,6 +155,34 @@ M -> P( P)*;
 
 <p style="font-family:arial; font-size:10pt">
 Onde S equivale ao Protocolo, Q aos possiveis sinais, L as possiveis letras e P a regra de formação de palavras e M a regra para formação de frases.
+</p>
+
+Exemplos de mensagens e mensagens e suas interpretações:
+
+    1. "+teste\n" - Registre na tag "teste".
+
+    2. "+C#\n" - Registre na tag "C#".
+
+    3. "-teste\n" - Desregistre na tag "C#".
+
+    4. "teste #teste\n" - Envie "teste" na tag "teste".
+
+    5. " #teste hahaha\n" - Envie "#teste hahaha" na tag "teste".
+
+    6. "teste #teste1 #teste2\n" - Envie "teste #teste1 #teste2" na tag "teste1" e na tag "teste2".
+
+    7. "oi #teste0 oi #teste1\n" - Envie "oi #teste0 oi #teste1" nas tags "teste0" e "teste1".
+
+    8. "testando testando #teste ah nao #teste\n" - Envie "testando testando #teste0 ah nao #teste1" nas tags "teste0" e "teste1".
+
+    9. "#testando ctest#ando #teste1 ah nao #teste2\n" - Envie "#testando ctest#ando #teste ah nao #teste" nas tags "teste1" e "teste2".
+
+    10. "#testando#test#ando #teste1 ah nao #teste2\n" - Envie "#testando#test#ando #teste1 ah nao #teste2" nas tags "teste1" e "teste2".
+
+    11. "kkkkk #C#\n"  - Envie "kkkkk #C#" na tag "C#".
+
+<p style="font-family:arial; font-size:10pt">
+Foi definido em src/protocol um lexer e parser que seguem essa gramárica.
 </p>
 
 

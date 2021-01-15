@@ -6,6 +6,7 @@
 
 #define TCP_CLIENT_MAX_PAYLOAD_LENGTH 500
 #include "network/tcp_client.h"
+#include "protocol/parser.h"
 
 #include "terminal.h"
 #include "utils.h"
@@ -45,8 +46,18 @@ int main(int argc, char *argv[]) {
     
                 unsigned long m_size = strlen(received);
     
-                for(int i=0; i< m_size; i++) {
-                    if(!verify_char(received[i])) return - 1;
+                protocol_lexer_t* lexer = NULL;
+                protocol_ast_t* abstract_syntax_tree = NULL;
+            
+                protocol_lexer_t_create(&lexer, received, m_size);
+            
+                int error = protocol_ast_t_parse(lexer, &abstract_syntax_tree);
+                protocol_lexer_t_destroy(&lexer);
+                protocol_ast_t_destroy(&abstract_syntax_tree);
+        
+                if(error)
+                {
+                    continue;
                 }
 
                 printf("%s", received);
@@ -59,6 +70,20 @@ int main(int argc, char *argv[]) {
 
         if(read_inputed_line(message, TCP_CLIENT_MAX_PAYLOAD_LENGTH) == -1)
             continue;
+
+        protocol_lexer_t* lexer = NULL;
+        protocol_ast_t* abstract_syntax_tree = NULL;
+    
+        protocol_lexer_t_create(&lexer, message, strlen(message));
+    
+        int error = protocol_ast_t_parse(lexer, &abstract_syntax_tree);
+        protocol_lexer_t_destroy(&lexer);
+        protocol_ast_t_destroy(&abstract_syntax_tree);
+        
+        if(error)
+        {
+            continue;
+        }
 
         tcp_client_t_send(client, message);
     }

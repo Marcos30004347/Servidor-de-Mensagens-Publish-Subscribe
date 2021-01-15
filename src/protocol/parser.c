@@ -81,11 +81,10 @@ int protocol_ast_t_parse(protocol_lexer_t* lexer, protocol_ast_t** ast)
 int protocol_ast_t_parse_message(protocol_lexer_t* lexer, protocol_ast_t** ast)
 {
     protocol_token_t* token = protocol_lexer_t_get_current_token(lexer);
-    // printf("Parsing Message\n");
     
     if(protocol_token_t_get_type(token) == PROTOCOL_TOKEN_EOF)
     {
-        protocol_lexer_t_get_next_token(lexer);
+        protocol_lexer_t_get_next_token(lexer, &token);
         return 0;
     }
 
@@ -108,14 +107,14 @@ int protocol_ast_t_parse_message(protocol_lexer_t* lexer, protocol_ast_t** ast)
 int protocol_ast_t_parse_tag(protocol_lexer_t* lexer, protocol_ast_t** ast)
 {
     protocol_token_t* token = protocol_lexer_t_get_current_token(lexer);
-    // printf("Parsing Tag\n");
 
     if(protocol_token_t_get_type(token) != PROTOCOL_TOKEN_TAG)
     {
         return -1;
     }
 
-    token = protocol_lexer_t_get_next_token(lexer);
+    int error = protocol_lexer_t_get_next_token(lexer, &token);
+    if(error < 0) return error;
 
     if(protocol_token_t_get_type(token) != PROTOCOL_TOKEN_KEYWORD)
     {
@@ -124,10 +123,11 @@ int protocol_ast_t_parse_tag(protocol_lexer_t* lexer, protocol_ast_t** ast)
 
     protocol_ast_t_create(ast);
 
-    (*ast)->ast_node_tag_value = protocol_token_t_get_value(token);
+    (*ast)->ast_node_tag_value = copy_value(token);
     (*ast)->ast_node_type      = PROTOCOL_AST_TAG;
 
-    token = protocol_lexer_t_get_next_token(lexer);
+    error = protocol_lexer_t_get_next_token(lexer, &token);
+    if(error < 0) return error;
 
     return protocol_ast_t_parse_message(lexer, &(*ast)->ast_node_child);
 }
@@ -145,16 +145,19 @@ int protocol_ast_t_parse_phrase(protocol_lexer_t* lexer, protocol_ast_t** ast)
     // printf("Parsing Phrase\n");
 
     char* phrase            = copy_value(token);
+
+    int error = protocol_lexer_t_get_next_token(lexer, &token);
+    if(error < 0) return error;
+
     while (
-        (token = protocol_lexer_t_get_next_token(lexer))
-        && protocol_token_t_get_type(token) == PROTOCOL_TOKEN_KEYWORD
+        protocol_token_t_get_type(token) == PROTOCOL_TOKEN_KEYWORD
     ) {
         char* tmp = phrase;
         phrase = concat_words(phrase, protocol_token_t_get_value(token));
         free(tmp);
-        // strcat(phrase, copy_value(token));
+        error = protocol_lexer_t_get_next_token(lexer, &token);
+        if(error < 0) return error;
     }
-    // printf("Parsing Phrase\n");
 
     protocol_ast_t_create(ast);
 
@@ -176,7 +179,8 @@ int protocol_ast_t_parse_add(protocol_lexer_t* lexer, protocol_ast_t** ast)
         return -1;
     }
 
-    token = protocol_lexer_t_get_next_token(lexer);
+    int error = protocol_lexer_t_get_next_token(lexer, &token);
+    if(error < 0) return error;
 
     if(protocol_token_t_get_type(token) != PROTOCOL_TOKEN_KEYWORD)
     {
@@ -188,7 +192,8 @@ int protocol_ast_t_parse_add(protocol_lexer_t* lexer, protocol_ast_t** ast)
     (*ast)->ast_node_add_value = copy_value(token);
     (*ast)->ast_node_type      = PROTOCOL_AST_ADD;
 
-    token = protocol_lexer_t_get_next_token(lexer);
+    error = protocol_lexer_t_get_next_token(lexer, &token);
+    if(error < 0) return error;
 
     if(protocol_token_t_get_type(token) != PROTOCOL_TOKEN_EOF)
     {
@@ -208,7 +213,8 @@ int protocol_ast_t_parse_rem(protocol_lexer_t* lexer, protocol_ast_t** ast)
         return -1;
     }
 
-    token = protocol_lexer_t_get_next_token(lexer);
+    int error = protocol_lexer_t_get_next_token(lexer, &token);
+    if(error < 0) return error;
 
     if(protocol_token_t_get_type(token) != PROTOCOL_TOKEN_KEYWORD)
     {
@@ -219,7 +225,8 @@ int protocol_ast_t_parse_rem(protocol_lexer_t* lexer, protocol_ast_t** ast)
     (*ast)->ast_node_rem_value = copy_value(token);
     (*ast)->ast_node_type      = PROTOCOL_AST_REM;
 
-    token = protocol_lexer_t_get_next_token(lexer);
+    error = protocol_lexer_t_get_next_token(lexer, &token);
+    if(error < 0) return error;
 
     if(protocol_token_t_get_type(token) != PROTOCOL_TOKEN_EOF)
     {

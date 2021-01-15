@@ -40,12 +40,17 @@ void parse(const char* src)
     if(error)
     {
         printf("Syntax Error!\n");
+        return;
     }
     printAST(ast);
 }
 
 int main()
 {
+    parse("+te^ste\n");
+    parse("+te~ste\n");
+
+
     parse("+teste\n");
     parse("+C#\n");
     parse("-teste\n");
@@ -56,6 +61,7 @@ int main()
     parse("testando testando #teste ah nao #teste\n");
     parse("#testando ctest#ando #teste ah nao #teste\n");
     parse("#testando#test#ando #teste ah nao #teste\n");
+    parse("kkkkk #C#\n");
 
     return 0;
 }
