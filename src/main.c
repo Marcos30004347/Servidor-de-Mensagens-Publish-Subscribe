@@ -3,23 +3,59 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-int main()
+
+void printAST(protocol_ast_t* ast)
 {
-    protocol_lexer_t* lexer = NULL;
-    protocol_lexer_t_create(&lexer, "+teste", strlen("+teste"));
-
-    protocol_ast_t* ast = NULL;
-
-    int error = protocol_ast_t_parse(lexer, &ast);
-    
     while (ast)
     {
-        printf("type %i\n", ast->ast_node_type);
+        if(ast->ast_node_type == PROTOCOL_AST_ADD)
+        {
+            printf("ADDING TAG %s ", ast->ast_node_add_value);
+        }
+        if(ast->ast_node_type == PROTOCOL_AST_TAG)
+        {
+            printf("TAG %s ", ast->ast_node_tag_value);
+        }  
+        if(ast->ast_node_type == PROTOCOL_AST_REM)
+        {
+            printf("REMMOVING TAG %s ", ast->ast_node_rem_value);
+        }    
+        if(ast->ast_node_type == PROTOCOL_AST_PHRASE)
+        {
+            printf("MESSAGE %s ", ast->ast_node_phrase_value);
+        }
         ast = ast->ast_node_child;
     }
-    
+    printf("\n");
+}
 
-    printf("error %i\n", error);
+void parse(const char* src)
+{
+    protocol_lexer_t* lexer = NULL;
+    protocol_ast_t* ast = NULL;
+
+    protocol_lexer_t_create(&lexer, src, strlen(src));
+
+    int error = protocol_ast_t_parse(lexer, &ast);
+    if(error)
+    {
+        printf("Syntax Error!\n");
+    }
+    printAST(ast);
+}
+
+int main()
+{
+    parse("+teste\n");
+    parse("+C#\n");
+    parse("-teste\n");
+    parse("teste #teste\n");
+    parse(" #teste hahaha\n");
+    parse("teste #teste1 #teste2\n");
+    parse("oi #teste oi #teste\n");
+    parse("testando testando #teste ah nao #teste\n");
+    parse("#testando ctest#ando #teste ah nao #teste\n");
+    parse("#testando#test#ando #teste ah nao #teste\n");
 
     return 0;
 }

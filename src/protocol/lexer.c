@@ -81,30 +81,22 @@ int protocol_lexer_t_is_eof(protocol_lexer_t* lexer)
 
 protocol_token_t* protocol_lexer_t_get_next_token(protocol_lexer_t* lexer)
 {
-    // printf("asdsad\n");
     // if(lexer->current_token) protocol_token_t_destroy(&lexer->current_token);
-    printf("current %c\n", lexer->current);
-    if(lexer->current_token)
-        printf("current token %s\n", protocol_token_t_get_value(lexer->current_token));
 
     protocol_token_t* token = NULL;
 
-    if(protocol_lexer_t_is_eof(lexer))
+    if(protocol_lexer_t_is_eof(lexer) || lexer->current == '\n')
     {
         protocol_token_t_create(&token, "\0", PROTOCOL_TOKEN_EOF);
+        lexer->current_token = token;
         return token;
     }
 
     while(lexer->current == ' ')
         protocol_lexer_t_advance(lexer);
 
-    if(lexer->current == '\n')
-    {
-        protocol_token_t_create(&token, "\0", PROTOCOL_TOKEN_EOF);
-        lexer->current_token = token;
-        return token;
-    }
-    else if(lexer->current == '+' && lexer->previous == '\0')
+
+    if(lexer->current == '+' && lexer->previous == '\0')
     {
         protocol_token_t_create(&token, "+", PROTOCOL_TOKEN_PLUS);
         protocol_lexer_t_advance(lexer);
@@ -130,14 +122,13 @@ protocol_token_t* protocol_lexer_t_get_next_token(protocol_lexer_t* lexer)
     protocol_token_type_t type = PROTOCOL_TOKEN_KEYWORD;
 
     while(
-        !protocol_lexer_t_is_eof(lexer)
-        && (lexer->current != ' ' || lexer->current != '\0' || lexer->current != '\n')
+        ! protocol_lexer_t_is_eof(lexer)
+        && (lexer->current != ' ' && lexer->current != '\0' && lexer->current != '\n')
     )
     {
         result = concat(result, lexer->current);
         protocol_lexer_t_advance(lexer);
     }
-    printf("result %s\n", result);
 
     protocol_token_t_create(&token, result, type);
 
