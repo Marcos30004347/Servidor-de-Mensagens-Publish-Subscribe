@@ -2,7 +2,10 @@
 #define NETWORK_TCP_SERVER_H
 
 #define TCP_SERVER_SYNC 1 << 2
+
+#ifndef TCP_SERVER_MAX_PAYLOAD_LENGTH
 #define TCP_SERVER_MAX_PAYLOAD_LENGTH 1224
+#endif
 
 /**
  * @brief The TCP Server structure.
@@ -111,5 +114,22 @@ void tcp_server_t_set_request_handler(struct tcp_server_t* server, tcp_server_t_
  * @param message The message that sould be send.
  */
 void send_message_to_client(int client, const char* message);
+
+/**
+ * @brief Disconnect a client from the server.
+ * 
+ * @param server The server that is holding the connection.
+ * @param client The id of the client that should be disconnected.
+ */
+void tcp_server_t_disconnect_client(struct tcp_server_t* server, int client);
+
+/**
+ * @brief Sets the message that will be send to the client before it gets disconnected.
+ * 
+ * @param server The server object.
+ * @param message The kill message.
+ */
+void tcp_server_t_set_disconnect_message(struct tcp_server_t* server, const char* message);
+
 
 #endif

@@ -2,8 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define DEBUG
 #include "utils.h"
 
+#define TCP_SERVER_MAX_PAYLOAD_LENGTH 500
 #include "network/tcp_server.h"
 
 #include "channel_table.h"
@@ -17,17 +19,17 @@ void register_to_channel(const char* payload, unsigned int payload_length, int c
     char reply_message[500] = {'\0'};
     char channel[500] = {'\0'};
 
-    memcpy(channel, &payload[1], payload_length - 1);
+    memcpy(channel, &payload[1], payload_length - 2);
 
     if(channel_table_t_get_client(channels, channel, client) != NULL)
     {
-        sprintf(reply_message,"already subscribed +%s", channel);
+        sprintf(reply_message,"already subscribed +%s\n", channel);
         send_message_to_client(client, reply_message);
         return;
     }
-
+    printf("asdasd\n");
     channel_table_t_add(channels, channel, client);
-    sprintf(reply_message,"subscribed +%s", channel);
+    sprintf(reply_message,"subscribed +%s\n", channel);
 
     send_message_to_client(client, reply_message);
 }
@@ -37,20 +39,20 @@ void unregister_from_channel(const char* payload, unsigned int payload_length, i
     char reply_message[500];
 
     char channel[500] = {'\0'};
-    memcpy(channel, &payload[1], payload_length - 1);
+    memcpy(channel, &payload[1], payload_length - 2);
 
     struct client_node_t * cli = channel_table_t_get_client(channels, channel, client);
 
     if(cli == NULL)
     {
-        sprintf(reply_message,"not subscribed -%s", channel);
+        sprintf(reply_message,"not subscribed -%s\n", channel);
         send_message_to_client(client, reply_message);
         return;
     }
 
     channel_table_t_remove(channels, channel, client);
 
-    sprintf(reply_message, "unsubscribed -%s", channel);
+    sprintf(reply_message, "unsubscribed -%s\n", channel);
     send_message_to_client(client, reply_message);
 }
 
@@ -58,72 +60,63 @@ void unregister_from_channel(const char* payload, unsigned int payload_length, i
 void broadcast_in_channel(const char* payload, unsigned payload_len, int client)
 {
     struct burned_table_t* table = NULL;
-    burned_table_t_create(&table);
+    char reply_message[500];
 
     char message[TCP_SERVER_MAX_PAYLOAD_LENGTH] = {'\0'};
     
     memcpy(message, payload, payload_len);
 
-    char* channel = NULL;
-    char* text = NULL;
+    char** tags = NULL;
+    unsigned long n_tags = 0;
 
-    text = strtok(message, "#");
-
-    unsigned long message_length = payload_len;
-
-    LOG("Verifying payload!\n");
-    for(int i=0; i< strlen(text); i++) {
-        LOG("%c = %i\n", message[i], message[i]);
-        if(
-            message[i] < 21 || message[i] > 126
-            || message[i] == '^'
-            || message[i] == '~'
-            || message[i] == '"'
-            || message[i] == '\''
-            || message[i] == '\n'
-            || message[i] == '\0'
-        )
-        {
-            send_message_to_client(client, "##kill");
-            return;
-        }
+    if(parse_message(message, strlen(message), &tags, &n_tags) < 0)
+    {
+        return;
     }
 
-    channel = strtok(NULL, "#");
+    for(int i=0; i<n_tags; i++)
+    {
+        burned_table_t_create(&table);
 
-    while(channel != NULL) {
-        LOG("[SENDING PAYLOAD]: '%s'(%i) on channel '%s'", payload, payload_len, channel);
-        struct client_node_t* client = channel_table_t_get_channel(channels, channel);
+        unsigned long message_length = payload_len;
+        
+        struct client_node_t* client = channel_table_t_get_channel(channels, tags[i]);
         
         while(client) {
             if(burned_table_t_get_client(table, client->client_id))
                 continue;
             
             burned_table_t_add(table, client->client_id);
-            
-            send_message_to_client(client->client_id, payload);
+
+            send_message_to_client(client->client_id, message);
             
             client = client->prev;
         }
 
-        channel = strtok(NULL, "#");
-    }
+        burned_table_t_destroy(&table);
 
-    burned_table_t_destroy(table);
+    }
 }
 
 void server_handler(struct request_t request, struct reply_t reply)
 {
-    if(request.payload_length > 500) 
-    {
-        LOG("Client %i send payload with forbiden length of %i!\n", request.payload_length);
-        send_message_to_client(reply.client_id, "##kill");
-        return;
+    LOG("Payload: %s!\n", request.payload);
+
+    LOG("Verificando payload!\n");
+    unsigned long m_size = strlen(request.payload);
+
+    for(int i=0; i<m_size; i++) {
+        LOG("%c = %i\n", request.payload[i], request.payload[i]);
+        if(!verify_char(request.payload[i]))
+        {
+            tcp_server_t_disconnect_client(request.server, reply.client_id);
+            return;
+        }
     }
 
-    LOG("[PAYLOAD RECEIVED]: '%s'(%lu)\n", request.payload, strlen(request.payload));
+    LOG("[PAYLOAD RECEBIDO]: tamanho=%lu\n", strlen(request.payload));
 
-    if(strcmp(request.payload, "##kill") == 0)  tcp_server_t_terminate(request.server);
+    if(strcmp(request.payload, "##kill\n") == 0)  tcp_server_t_terminate(request.server);
     else if(request.payload[0] == '+')          register_to_channel(request.payload, request.payload_length, reply.client_id);
     else if(request.payload[0] == '-')          unregister_from_channel(request.payload, request.payload_length, reply.client_id);
     else                                        broadcast_in_channel(request.payload, request.payload_length, reply.client_id);
@@ -142,14 +135,17 @@ int main(int argc, char *argv[]) {
 
     channel_table_t_create(&channels);
 
-
     tcp_server_t_create(&server, TCP_SERVER_SYNC);
-    tcp_server_t_bind_to_port(server, port);
+
+    tcp_server_t_set_disconnect_message(server, "##kill");
     tcp_server_t_set_request_handler(server, server_handler);
+
+    tcp_server_t_bind_to_port(server, port);
     tcp_server_t_start(server);
 
     LOG("Terminating Publish/Subscribe Server!\n");
-
     channel_table_t_destroy(channels);
+    LOG("Terminating Publish/Subscribe Server!\n");
     tcp_server_t_destroy(server);
+    LOG("Terminating Publish/Subscribe Server!\n");
 }

@@ -46,6 +46,9 @@ int tcp_client_t_receive(struct tcp_client_t* client, char* message, int length)
 
 void tcp_client_t_send(struct tcp_client_t* client, char* message)
 {
+	if(strlen(message) > TCP_CLIENT_MAX_PAYLOAD_LENGTH)
+		return;
+
 	write(client->client_fd, message, strlen(message)); 
 }
 

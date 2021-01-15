@@ -7,16 +7,6 @@
 
 #include "hash.h"
 
-void client_node_t_remove(struct client_node_t** node)
-{
-    if((*node)->prev) (*node)->prev->next = (*node)->next;
-    if((*node)->next) (*node)->next->prev = (*node)->prev;
-
-    free((*node));
-
-    *node = NULL;
-    node = NULL;
-}
 
 void channel_table_t_create(struct channel_table_t** table)
 {
@@ -144,7 +134,6 @@ struct client_node_t* channel_table_t_get_channel(struct channel_table_t* table,
 }
 
 
-
 void channel_table_t_destroy(struct channel_table_t* table)
 {
     for(int i=0; i<128; i++)
@@ -152,15 +141,20 @@ void channel_table_t_destroy(struct channel_table_t* table)
         while (table->table[i])
         {
             struct channel_node_t* tmp = table->table[i];
-            table->table[i] = table->table[i]->next;
 
             while(table->table[i]->clients) {
-                client_node_t_remove(&table->table[i]->clients);
+                if(table->table[i]->clients->prev) table->table[i]->clients->prev->next = table->table[i]->clients->next;
+                if(table->table[i]->clients->next) table->table[i]->clients->next->prev = table->table[i]->clients->prev;
+                struct client_node_t* tmp = table->table[i]->clients;
+                table->table[i]->clients = table->table[i]->clients->prev;
+                free(tmp);
             }
+
+            table->table[i] = table->table[i]->next;
             free(tmp->channel_name);
             free(tmp);
         }
     }
-
     mutex_t_destroy(table->lock);
+    free(table);
 }

@@ -11,7 +11,6 @@
 void burned_table_t_create(struct burned_table_t** table)
 {
     *table = (struct burned_table_t*)malloc(sizeof(struct burned_table_t));
-    mutex_t_create(&(*table)->lock);
     for(int i=0; i<128; i++)
     {
         (*table)->table[i] = NULL;
@@ -19,7 +18,6 @@ void burned_table_t_create(struct burned_table_t** table)
 }
 
 void burned_table_t_add(struct burned_table_t* table, int client) {
-    mutex_t_lock(table->lock);
 
     // If no channel with 'string' name exist yet, it should be created
     if(!table->table[client%128]) {
@@ -34,6 +32,7 @@ void burned_table_t_add(struct burned_table_t* table, int client) {
     struct burned_node_t* cli = (struct burned_node_t*)malloc(sizeof(struct burned_node_t));
 
     cli->next = NULL;
+
     cli->key = client;
 
     while((*tail)->next && (*tail)->key != client)
@@ -42,7 +41,6 @@ void burned_table_t_add(struct burned_table_t* table, int client) {
     if((*tail)->key == client) return;
 
     (*tail)->next = cli;
-    mutex_t_unlock(table->lock);
 }
 
 int burned_table_t_get_client(struct burned_table_t* table, int client)
@@ -62,17 +60,18 @@ int burned_table_t_get_client(struct burned_table_t* table, int client)
 
 
 
-void burned_table_t_destroy(struct burned_table_t* table)
+void burned_table_t_destroy(struct burned_table_t** table)
 {
     for(int i=0; i<128; i++)
     {
-        while (table->table[i])
+        while ((*table)->table[i])
         {
-            struct burned_node_t* tmp = table->table[i];
-            table->table[i] = table->table[i]->next;
+            struct burned_node_t* tmp = (*table)->table[i];
+            (*table)->table[i] = (*table)->table[i]->next;
             free(tmp);
         }
     }
 
-    mutex_t_destroy(table->lock);
+    free((*table));
+    table = NULL;
 }

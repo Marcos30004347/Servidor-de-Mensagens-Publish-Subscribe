@@ -16,14 +16,13 @@ struct burned_node_t
 
 struct burned_table_t
 {
-    struct mutex_t* lock;
     struct burned_node_t* table[128];
 };
 
 
 void burned_table_t_create(struct burned_table_t** table);
 void burned_table_t_add(struct burned_table_t* table, int client);
-void burned_table_t_destroy(struct burned_table_t* table);
+void burned_table_t_destroy(struct burned_table_t** table);
 
 int burned_table_t_get_client(struct burned_table_t* table, int cid);
 

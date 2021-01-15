@@ -33,35 +33,63 @@ struct thread_data {
 struct tcp_server_t {
     int                             flags;
     int                             server_fd;
+    const char*                     kill_message;
     struct sockaddr_in              address;
     struct connection_node_t*       connections;
     struct mutex_t*                 req_lock;
-    struct thread_t*                connect_server;
     tcp_server_t_request_handler    request_handler;
 };
 
 void* tcp_server_t_client_handler(void* c)
 {
     struct thread_data* data = (struct thread_data*)c;
+
+    struct tcp_server_t* server = data->server;
     int connfd = data->connfd;
 
-    char request_message[TCP_SERVER_MAX_PAYLOAD_LENGTH]; 
-    while(read(connfd, request_message, TCP_SERVER_MAX_PAYLOAD_LENGTH))
+    char request[TCP_SERVER_MAX_PAYLOAD_LENGTH] = {'\0'};
+    char message[TCP_SERVER_MAX_PAYLOAD_LENGTH] = {'\0'};
+    char payload[TCP_SERVER_MAX_PAYLOAD_LENGTH] = {'\0'};
+
+
+    while(read(connfd, request, TCP_SERVER_MAX_PAYLOAD_LENGTH))
     {
-        struct request_t req;
-        struct reply_t rep;
+        if(strlen(message) + strlen(request) > TCP_SERVER_MAX_PAYLOAD_LENGTH)
+        {
+            tcp_server_t_disconnect_client(server, connfd);
+            break;
+        }
     
-        req.payload_length  = strlen(request_message);
-        req.payload         = request_message;   
-        req.server          = data->server;
+        strcat(message, request);
 
-        rep.client_id       = data->connfd;
+        unsigned long message_length = strlen(message);
+        bzero(request, TCP_SERVER_MAX_PAYLOAD_LENGTH); 
 
-        if(data->server->flags & TCP_SERVER_SYNC) mutex_t_lock(data->server->req_lock);
-        data->server->request_handler(req, rep);
-        if(data->server->flags & TCP_SERVER_SYNC) mutex_t_unlock(data->server->req_lock);
+        for(int i=0; i<message_length; i++)
+        {
+            if(message[i] == '\n')
+            {
+                bzero(payload, TCP_SERVER_MAX_PAYLOAD_LENGTH);
+                memcpy(payload, message, i+1);
+                struct request_t req;
+                struct reply_t rep;
+            
+                req.payload_length  = strlen(payload);
+                req.payload         = payload;   
+                req.server          = server;
 
-        bzero(request_message, TCP_SERVER_MAX_PAYLOAD_LENGTH); 
+                rep.client_id       = connfd;
+
+                if(server->flags & TCP_SERVER_SYNC) mutex_t_lock(server->req_lock);
+                server->request_handler(req, rep);
+                if(server->flags & TCP_SERVER_SYNC) mutex_t_unlock(server->req_lock);
+
+                bzero(message, i);
+                memmove(message, message + i + 1, message_length - i - 1);
+    
+                break;
+            }
+        }
     }
 
     free(data);
@@ -98,16 +126,16 @@ void tcp_server_t_hold_connection(struct tcp_server_t* server, struct connection
 void tcp_server_t_create(struct tcp_server_t** server, int flags)
 {
     *server = (struct tcp_server_t*)malloc(sizeof(struct tcp_server_t));
-
     mutex_t_create(&(*server)->req_lock);
 
+    (*server)->kill_message = NULL;
     (*server)->server_fd = socket(AF_INET, SOCK_STREAM, 0);
     (*server)->request_handler = NULL;
     (*server)->flags = flags;
     (*server)->connections = NULL;
 
     if ((*server)->server_fd == -1) { 
-        printf("socket creation failed...\n"); 
+        printf("[ERRORÇ: criacao do socket falhou!\n"); 
         mutex_t_unlock((*server)->req_lock);
         exit(0); 
     }
@@ -115,11 +143,14 @@ void tcp_server_t_create(struct tcp_server_t** server, int flags)
 
 void tcp_server_t_destroy(struct tcp_server_t* server)
 {
+    printf("asdasdasdas\n");
     struct connection_node_t * tmp;
+    printf("asdasdasdas\n");
     while (server->connections)
     {
+        printf("asdasdasdas\n");
         tmp = server->connections;
-    
+
         server->connections = server->connections->prev;
         if(server->connections)
             server->connections->next = NULL;
@@ -128,9 +159,7 @@ void tcp_server_t_destroy(struct tcp_server_t* server)
         free(tmp);
     }
 
-    thread_t_destroy(server->connect_server);
     mutex_t_destroy(server->req_lock);
-    
     free(server);
 }
 
@@ -144,7 +173,7 @@ struct connection_t tcp_server_t_accept_connection(struct tcp_server_t* server) 
 void tcp_server_t_start(struct tcp_server_t* server)
 {
     if ((listen(server->server_fd, 5)) != 0) { 
-        printf("Listen failed...\n"); 
+        printf("[ERROR]: Nao foi possivel escutar\n"); 
         exit(0); 
     }
 
@@ -163,7 +192,8 @@ void tcp_server_t_terminate(struct tcp_server_t* server) {
 
     while(tmp)
     {
-        send_message_to_client(tmp->client, "##kill");
+        if(server->kill_message)
+            send_message_to_client(tmp->client, server->kill_message);
         tmp = tmp->prev;
     }
 
@@ -191,4 +221,30 @@ void tcp_server_t_set_request_handler(struct tcp_server_t* server, tcp_server_t_
 void send_message_to_client(int client, const char* message)
 {
     write(client, message, strlen(message)); 
+}
+
+void tcp_server_t_disconnect_client(struct tcp_server_t* server, int client)
+{
+    struct connection_node_t ** connections = &server->connections;
+    while ((*connections) && (*connections)->client!=client)
+        (*connections) = (*connections)->next;
+    
+    if((*connections) && (*connections)->client == client)
+    {
+        if((*connections)->prev) (*connections)->prev->next = (*connections)->next;
+        if((*connections)->next) (*connections)->next->prev = (*connections)->prev;
+
+        if(server->kill_message)
+            send_message_to_client(client, server->kill_message);
+
+        thread_t_destroy((*connections)->thread);
+        free((*connections));
+        *connections = NULL;
+        // connections = NULL;
+    }
+}
+
+void tcp_server_t_set_disconnect_message(struct tcp_server_t* server, const char* message)
+{
+    server->kill_message = message;
 }

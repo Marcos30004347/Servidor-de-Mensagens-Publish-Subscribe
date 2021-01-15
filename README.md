@@ -31,17 +31,19 @@ Em src/network/tcp_server.c foi definida uma estrutura de dados e metodos que ab
 
 Em caso de aplicações em que a ordem que o servidor irá processar as requisições de diferentes clientes importa, é possivel instanciar o servidor tcp com a flag **TCP_SERVER_SYNC**, essa flag fará com o que servidor execute a primeira requisição que chegar antes que a thread de um outro cliente com requisição pendente comece sua execução.
 
+
 O comportamento do servidor é definido utilizando-se o método:
 
     void tcp_server_t_set_request_handler(struct tcp_server_t* server, tcp_server_t_request_handler handler);
 
-Este método irá definir como o servidor deverá processar uma mensagem qualquer recebida de algum cliente.
+Este método irá definir como o servidor deverá processar uma mensagem qualquer recebida de algum cliente. Uma mensagem so é repassada ao handler quando o servidor detectar um '\n', se essa condição não ocorrerm o server continuará esperando uma nova mensagem que será tratada como a continuação da mensagem anterior.
 
 Estes metodos precisam seguir a interface:
 
     void(*)(struct request_t, struct reply_t);
 
 As estruturas request_t e reply_t são estruturas que armazenam informações uteis como o cliente que fez a requisição, o servidor que está processando a requisição, a mensagem de payload e o tamanho da mensagem enviada pelo cliente.
+
 
 ### Cliente TCP:
 Foi implementado em src/network/tcp_client.c uma estrutura que abstrai a funcionalidade de um client TCP.
@@ -62,10 +64,20 @@ Toda a lógica relacionada à aplicação de Publish/Subscribe está definida so
 
 A aplicação solicitada define quatro ações de usuário:
 
-1. Cadastrar o cliente em um canal enviando uma mengagem iniciada com o caractere '+'.
-2. Descadastar o cliente de um canal enviando uma mengagem iniciada com o caractere '-'.
+1. Cadastrar o cliente em uma tag enviando uma mengagem iniciada com o caractere '+'.
+2. Descadastar o cliente de uma tag enviando uma mengagem iniciada com o caractere '-'.
 3. Encerrar a execução do servidor e todas as suas conexoes enviando uma mensagem "##kill".
-4. Enviar uma mensagem de texto para o servidor que irá redirecionar a mesma mensagem para qualquer cliente que esteja interessado. Essa ação pode ser realizada enviando uma mensagem que não se encaixa em nenhuma das condições das ações anteriores.
+4. Enviar uma mensagem de texto para o servidor que irá redirecionar a mesma mensagem para qualquer cliente que esteja interessado utilizando a sintaxe *"mensagem #tag"*. Essa ação pode ser realizada enviando uma mensagem que não se encaixa em nenhuma das condições das ações anteriores.
+
+### Observaçõs:
+
+A descrição do trabalho prático define:
+
+    Servidores e clientes trocam mensagens curtas de até 500 bytes usando o protocolo TCP.  Mensagens carregam texto codificado segundo a tabela ASCII. Apenas letras, números, os caracteres de pontuação ,.?!:;+-*/=@#$%()[]{} e espaços podem ser transmitidos. (Caracteres acentuados não podem ser transmitidos.)
+
+A segunda sentença define que mensagens dever ser codificadas de acordo com a tabela ASCII. A partir disso, entendi que o range de characteres deveria estar entre (48, 57) que abrage os numeros de 0 a 9, (65, 90) que abrange os caracteres maiusculos, (97,122) que abrange os caracteres minusculos e o conjunto de caracteres ,.?!:;+-*/=@#$%()[]{}. Se uma mensagem for enviada e não obedecer esses parametros o servidor irá desconectar o cliente e o cliente abortará sua execução.
+
+Palavras iniciadas com '#' e que possuem outro '#' no meio da palavra não são consideradas tags válidas. 
 
 ### O Servidor:
 

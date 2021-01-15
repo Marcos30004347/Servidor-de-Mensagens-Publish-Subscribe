@@ -34,6 +34,7 @@ int read_inputed_line(char* message, int max)
         chacatere = get_charactere();
     }
 
+    message[length++] = '\n';
     return length;
 }
 
