@@ -3,12 +3,9 @@
 
 #include "lexer.h"
 
-//S -> (M*( \#'P)\*)\* | +P | -P | P;
-//Q -> , | . | ? | ! | : | ; | + | - | * | / | = | @ | # | $ | $ | % | ( | ) | { | };
-//L -> [a-z] | [A-z] | [0-9];
-//P -> L* | QL | LPL | LP;
-//M -> P( P)*;
-
+/**
+ * @brief The type of the AST node.
+ */
 typedef enum {
     PROTOCOL_AST_ROOT   = 0,
     PROTOCOL_AST_TAG    = 1,
@@ -18,6 +15,9 @@ typedef enum {
     PROTOCOL_AST_MESS   = 5,
 } protocol_ast_node_type;
 
+/**
+ * @brief The protocol AST type.
+ */
 struct protocol_ast_t
 {
     protocol_ast_node_type  ast_node_type;
@@ -28,15 +28,81 @@ struct protocol_ast_t
     struct protocol_ast_t*  ast_node_child;
 };
 
+/**
+ * @brief The protocol AST node data structure.
+ */
 typedef struct protocol_ast_t protocol_ast_t;
 
+/**
+ * @brief Parse the Protocol using the lexer.
+ * 
+ * @param lexer The lexer object.
+ * @param ast The AST object.
+ * @return Error code.
+ */
 int protocol_ast_t_parse(protocol_lexer_t* lexer, protocol_ast_t** ast);
+
+
+/**
+ * @brief Parse a Protocol Tag using the lexer.
+ * 
+ * @param lexer The lexer object.
+ * @param ast The AST object.
+ * @return Error code.
+ */
 int protocol_ast_t_parse_tag(protocol_lexer_t* lexer, protocol_ast_t** ast);
+
+/**
+ * @brief Parse a Protocol Add using the lexer.
+ * 
+ * @param lexer The lexer object.
+ * @param ast The AST object.
+ * @return Error code.
+ */
 int protocol_ast_t_parse_add(protocol_lexer_t* lexer, protocol_ast_t** ast);
+
+/**
+ * @brief Parse a Protocol Sub using the lexer.
+ * 
+ * @param lexer The lexer object.
+ * @param ast The AST object.
+ * @return Error code.
+ */
 int protocol_ast_t_parse_rem(protocol_lexer_t* lexer, protocol_ast_t** ast);
+
+/**
+ * @brief Parse a Protocol phrase.
+ * 
+ * @param lexer The lexer object.
+ * @param ast The AST object.
+ * @return Error code.
+ */
 int protocol_ast_t_parse_phrase(protocol_lexer_t* lexer, protocol_ast_t** ast);
+
+/**
+ * @brief Parse a Protocol message.
+ * 
+ * @param lexer The lexer object.
+ * @param ast The AST object.
+ * @return Error code.
+ */
 int protocol_ast_t_parse_message(protocol_lexer_t* lexer, protocol_ast_t** ast);
 
+
+/**
+ * @brief Destroys and deallocate a protocol_ast_t object.
+ * 
+ * @param parser The parser object.
+ */
 void protocol_ast_t_destroy(protocol_ast_t** parser);
+
+
+/**
+ * @brief Print the abstract syntax tree of the protocol.
+ * 
+ * @param ast 
+ */
+void protocol_ast_t_print(protocol_ast_t* ast);
+
 
 #endif

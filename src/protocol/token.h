@@ -10,6 +10,7 @@ typedef enum {
     PROTOCOL_TOKEN_MINUS    = 4,
     PROTOCOL_TOKEN_TAG      = 5,
     PROTOCOL_TOKEN_EOF      = 6,
+    PROTOCOL_TOKEN_SPACES   = 7,
 } protocol_token_type_t;
 
 

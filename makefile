@@ -1,12 +1,12 @@
-# all:
-# 	gcc \
-# 	src/main.c \
-# 	src/protocol/lexer.c \
-# 	src/protocol/parser.c \
-# 	src/protocol/token.c \
-# 	-o teste
-
 all: server client
+
+protocol-tester:
+	gcc \
+	src/protocol/main.c \
+	src/protocol/lexer.c \
+	src/protocol/parser.c \
+	src/protocol/token.c \
+	-o protocol
 
 server:
 	gcc \

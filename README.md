@@ -16,9 +16,7 @@
 # Relatório: Trabalho Prático - Aplicação Publish/Subscribe
 ## Introdução
 <p style="font-family: arial; font-size:10pt">
-O código foi dividido em 2 modulos, uma biblioteca de código que está em localizada em src/netowrk que abstrai um servidor e cliente TCP. Essa abstração foi usada para a implementação da aplicação Publish/Subscribe permitindo que as regras de negócio da aplicação fiquem mais limpas e de facil entendimento.
-
-As regras de negócio da aplicação Publish/Subscribe está definida nos arquivos *.c e *.h localizadas dentro do diretório 'src/'.
+O código foi dividido em 2 modulos, uma biblioteca de código que está em localizada em src/netowrk que abstrai um servidor e cliente TCP e que foi usada para a implementação da aplicação Publish/Subscribe permitindo que as regras de negócio da aplicação fiquem mais limpas e de fácil compreensão, uma biblioteca localizada em src/protocol que contém um lexer e parser para o protocolo, e o código da aplicação em src/.
 </p>
 
 ### Compatibilidade:
@@ -109,18 +107,19 @@ A aplicação solicitada define quatro ações de usuário:
 3. Encerrar a execução do servidor e todas as suas conexoes enviando uma mensagem "##kill".
 4. Enviar uma mensagem de texto para o servidor que irá redirecionar a mesma mensagem para qualquer cliente que esteja interessado utilizando a sintaxe *"mensagem #tag"*. Essa ação pode ser realizada enviando uma mensagem que não se encaixa em nenhuma das condições das ações anteriores.
 
+### Protocolo:
 <p style="font-family:arial; font-size:10pt">
-A descrição do trabalho prático define:
+A descrição do trabalho define:
 </p>
 
     Servidores e clientes trocam mensagens curtas de até 500 bytes usando o protocolo TCP.  Mensagens carregam texto codificado segundo a tabela ASCII. Apenas letras, números, os caracteres de pontuação ,.?!:;+-*/=@#$%()[]{} e espaços podem ser transmitidos. (Caracteres acentuados não podem ser transmitidos.)
 
 <p style="font-family:arial; font-size:10pt">
-A segunda sentença define que mensagens dever ser codificadas de acordo com a tabela ASCII. A partir disso, entendi que o range de characteres deveria estar entre (48, 57) que abrage os numeros de 0 a 9, (65, 90) que abrange os caracteres maiusculos, (97,122) que abrange os caracteres minusculos e o conjunto de caracteres ,.?!:;+-*/=@#$%()[]{}. Se uma mensagem for enviada e não obedecer esses parametros o servidor irá desconectar o cliente e o cliente abortará sua execução.
+Ou seja, mensagens devem ser codificadas de acordo com a tabela ASCII. A partir disso, foi entendido que o intervalo de characteres deveria estar entre (48, 57) que abrage os numeros de 0 a 9, (65, 90) que abrange os caracteres maiusculos, (97,122) que abrange os caracteres minusculos e o conjunto de caracteres ,.?!:;+-*/=@#$%()[]{}. Se uma mensagem for enviada e não obedecer esses parametros o servidor irá desconectar o cliente que abortará sua execução.
 </p>
 
 <p style="font-family:arial; font-size:10pt">
-Outra definição que a descrição do trabalho define é:
+Outra requisição do trabalho é:
 </p>
 
     1) As mensagens de interesse (+tag) e desinteresse (-tag) devem ter o sinal (+ ou -) no primeiro caractere e apenas um tag, sem nenhum texto adicional.
@@ -132,53 +131,35 @@ A primeira sentença define que mensagens de interesse e desinteresse devem cont
 </p>
 
 <p style="font-family:arial; font-size:10pt">
-Por consequencia, a segunda sentença também define que tags de broadcast (geralmente iniciadas com #) precisam estar entre espaços ou se encontrar após início de mensagem(entendido como pelo menos uma sequencia de caracteres de tamanho maior que 1) ou termino da mensagem. Sendo assim, as seguintes mensagems seriam:
+Foi assumido que as sentenças " #dota#overwatch" e " #dota#overwatch " estão de acordo com o protocolo e enviam as mensagem " #dota#overwatch" e " #dota#overwatch " na tag "dota#overwatch", porém como solicitado, a sentença "#dota#overwatch" não é contem uma tag válida pois não há espaços antes do primeiro "#" e portanto essa mensagem deverá ser interpretada como uma palavra.
 </p>
 
-1. "#dota#overwatch" - Não seria uma tag válida por não inicial em um espaço ou palavra.
-2. " #dota#overwatch" - Não seria uma tag válida pois apesar de de iniciar em espaços, ela não termina em um (*'devem estar precedidas e sucedidas por espaço'*). O mesmo raciocínio serve para "#dota#overwatch ".
-3. "perdeu eh culpa do suporte #dota #overwatch" - #dota seria uma tag válida pois é cercada por espaços, porém #overwatch não seria já que não é terminado em espaços.
-
 <p style="font-family:arial; font-size:10pt">
-Para melhor experiencia de usuário, foi optado uma gramatica para o protocolo que segue:
+A partir disso, para o desenvolvimento do parser para o protocolo, foi utilizado a seguint Gramática Libre de Contexto:
 </p>
 
-S -> (M*( \#'P)\*)\* | +P | -P | P;
-
-Q -> , | . | ? | ! | : | ; | + | - | * | / | = | @ | # | $ | $ | % | ( | ) | { | };
-
-L -> [a-z] | [A-z] | [0-9];
-
-P -> L* | QL | LPL | LP;
-
-M -> P( P)*;
+    S -> (M*( \#'P)\* M\*)\* | +P | -P | P;
+    Q -> , | . | ? | ! | : | ; | + | - | * | / | = | @ | # | $ | $ | % | ( | ) | { | };
+    L -> [a-z] | [A-z] | [0-9];
+    P -> L* | QL | LPL | LP;
+    M -> ESPAÇO\*P(ESPAÇO\*P)*;
 
 <p style="font-family:arial; font-size:10pt">
-Onde S equivale ao Protocolo, Q aos possiveis sinais, L as possiveis letras e P a regra de formação de palavras e M a regra para formação de frases.
+Onde ESPAÇO equivale à um espaço (' '), S ao Protocolo e representa a variavel inicial da gramática, Q aos possiveis sinais, L às possíveis letras, P às palavras e M às frases.
 </p>
 
 Exemplos de mensagens e mensagens e suas interpretações:
 
     1. "+teste\n" - Registre na tag "teste".
-
     2. "+C#\n" - Registre na tag "C#".
-
     3. "-teste\n" - Desregistre na tag "C#".
-
     4. "teste #teste\n" - Envie "teste" na tag "teste".
-
     5. " #teste hahaha\n" - Envie "#teste hahaha" na tag "teste".
-
     6. "teste #teste1 #teste2\n" - Envie "teste #teste1 #teste2" na tag "teste1" e na tag "teste2".
-
     7. "oi #teste0 oi #teste1\n" - Envie "oi #teste0 oi #teste1" nas tags "teste0" e "teste1".
-
     8. "testando testando #teste ah nao #teste\n" - Envie "testando testando #teste0 ah nao #teste1" nas tags "teste0" e "teste1".
-
     9. "#testando ctest#ando #teste1 ah nao #teste2\n" - Envie "#testando ctest#ando #teste ah nao #teste" nas tags "teste1" e "teste2".
-
     10. "#testando#test#ando #teste1 ah nao #teste2\n" - Envie "#testando#test#ando #teste1 ah nao #teste2" nas tags "teste1" e "teste2".
-
     11. "kkkkk #C#\n"  - Envie "kkkkk #C#" na tag "C#".
 
 <p style="font-family:arial; font-size:10pt">
@@ -199,7 +180,7 @@ Por sua vez, esse handler verifica a mensagem enviada pelo cliente e, baseado na
 </p>
 
 <p style="font-family:arial; font-size:10pt">
-O servidor utiliza apenas duas estruturas de dados auxiliares, um mapa do tipo 'string'->'lista de inteiros' que irá armazenar em qual canal('string') um determinado grupo de clientes('lista de inteiros') estão interessados, chamaremos essa estrutura de tabela de canais, e uma estrutura de tabela hash que armazenará inteiros e que será utilizada para armazenar quais os clientes que já receberam uma dada mensagem para evitar que clientes cadastrados em dois canais diferentes recebam uma mensagem duplicada em caso de essa mesma mensagem ter sido enviada para ambos os canais.
+O servidor utiliza apenas duas estruturas de dados auxiliares, um mapa do tipo 'string'->'lista de inteiros' que irá armazenar em qual tag('string') um determinado grupo de clientes('lista de inteiros') estão interessados, chamaremos essa estrutura de tabela de tags, e uma estrutura de tabela hash que armazenará inteiros e que será utilizada para armazenar quais os clientes que já receberam uma dada mensagem para evitar que clientes cadastrados em duas tags diferentes recebam uma mensagem duplicada em caso de essa mesma mensagem ter sido enviada para ambos as tags.
 </p>
 
 ### O Cliente:

@@ -136,14 +136,24 @@ int protocol_lexer_t_get_next_token(protocol_lexer_t* lexer, protocol_token_t** 
         return 0;
     }
 
-    while(lexer->current == ' ')
+    if(lexer->current == ' ')
     {
-        int error = protocol_lexer_t_advance(lexer);
-        if(error < 0) return error;
+        char* result = NULL;
+        int error;
+        while(lexer->current == ' ')
+        {
+            result = concat(result, lexer->current);
+
+            error = protocol_lexer_t_advance(lexer);
+            if(error < 0) return error;
+        }
+    
+        protocol_token_t_create(token, result, PROTOCOL_TOKEN_SPACES);
+        lexer->current_token = (*token);
+    
+        return 0;
     }
-
-
-    if(lexer->current == '+' && lexer->previous == '\0')
+    else if(lexer->current == '+' && lexer->previous == '\0')
     {
         int error = protocol_lexer_t_advance(lexer);
         if(error < 0) return error;

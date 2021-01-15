@@ -15,12 +15,11 @@ char* concat_words(const char* str0, const char* str1)
     unsigned long l0 = strlen(str0);
     unsigned long l1 = strlen(str1);
 
-    char* r = (char*)malloc(sizeof(char)*(l0+l1+2));
+    char* r = (char*)malloc(sizeof(char)*(l0+l1+1));
 
     memcpy(r, str0, l0);
-    r[l0] = ' ';
-    memcpy(r + l0 + 1, str1, l1);
-    r[l0 + l1 + 1] = '\0';
+    memcpy(r + l0, str1, l1);
+    r[l0 + l1] = '\0';
     return r;
 }
 
@@ -59,22 +58,13 @@ int protocol_ast_t_parse(protocol_lexer_t* lexer, protocol_ast_t** ast)
     if(!token || protocol_token_t_get_type(token) == PROTOCOL_TOKEN_EOF)
         return 0;
 
-    // printf("Parsing Protocol\n");
 
     if(protocol_token_t_get_type(token) == PROTOCOL_TOKEN_PLUS)
-    {
         return protocol_ast_t_parse_add(lexer, &(*ast)->ast_node_child);
-    }
     else if(protocol_token_t_get_type(token) == PROTOCOL_TOKEN_MINUS)
-    {
         return protocol_ast_t_parse_rem(lexer, &(*ast)->ast_node_child);
-    }
-    else
-    {
-        return protocol_ast_t_parse_message(lexer, &(*ast)->ast_node_child);
-    }
 
-    return 0;
+    return protocol_ast_t_parse_message(lexer, &(*ast)->ast_node_child);
 }
 
 
@@ -95,12 +85,8 @@ int protocol_ast_t_parse_message(protocol_lexer_t* lexer, protocol_ast_t** ast)
     {
         return protocol_ast_t_parse_tag(lexer, &(*ast)->ast_node_child);
     }
-    else if(protocol_token_t_get_type(token) == PROTOCOL_TOKEN_KEYWORD)
-    {
-        return protocol_ast_t_parse_phrase(lexer, &(*ast)->ast_node_child);
-    }
 
-    return 0;
+    return protocol_ast_t_parse_phrase(lexer, &(*ast)->ast_node_child);
 }
 
 
@@ -138,11 +124,12 @@ int protocol_ast_t_parse_phrase(protocol_lexer_t* lexer, protocol_ast_t** ast)
     // printf("Parsing Phrase\n");
     protocol_token_t* token = protocol_lexer_t_get_current_token(lexer);
 
-    if(protocol_token_t_get_type(token) != PROTOCOL_TOKEN_KEYWORD)
-    {
+    if(
+        protocol_token_t_get_type(token) != PROTOCOL_TOKEN_KEYWORD
+        && protocol_token_t_get_type(token) != PROTOCOL_TOKEN_SPACES
+    ){
         return -1;
     }
-    // printf("Parsing Phrase\n");
 
     char* phrase            = copy_value(token);
 
@@ -151,6 +138,7 @@ int protocol_ast_t_parse_phrase(protocol_lexer_t* lexer, protocol_ast_t** ast)
 
     while (
         protocol_token_t_get_type(token) == PROTOCOL_TOKEN_KEYWORD
+        || protocol_token_t_get_type(token) == PROTOCOL_TOKEN_SPACES
     ) {
         char* tmp = phrase;
         phrase = concat_words(phrase, protocol_token_t_get_value(token));
@@ -234,4 +222,29 @@ int protocol_ast_t_parse_rem(protocol_lexer_t* lexer, protocol_ast_t** ast)
     }
 
     return 0;
+}
+
+
+void protocol_ast_t_print(protocol_ast_t* ast)
+{
+    while (ast)
+    {
+        if(ast->ast_node_type == PROTOCOL_AST_ADD)
+        {
+            printf("ADDING TAG '%s' ", ast->ast_node_add_value);
+        }
+        if(ast->ast_node_type == PROTOCOL_AST_TAG)
+        {
+            printf("TAG '%s' ", ast->ast_node_tag_value);
+        }  
+        if(ast->ast_node_type == PROTOCOL_AST_REM)
+        {
+            printf("REMMOVING TAG '%s' ", ast->ast_node_rem_value);
+        }    
+        if(ast->ast_node_type == PROTOCOL_AST_PHRASE)
+        {
+            printf("MESSAGE '%s' ", ast->ast_node_phrase_value);
+        }
+        ast = ast->ast_node_child;
+    }
 }

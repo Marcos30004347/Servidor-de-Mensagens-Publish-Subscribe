@@ -112,7 +112,7 @@ void broadcast_in_channel(const char* payload, unsigned payload_len, int client,
  */
 void server_handler(struct request_t request, struct reply_t reply)
 {
-    LOG("%s", request.payload);
+    LOG("PAYLOAD: %s", request.payload);
     if(strcmp(request.payload, "##kill\n") == 0)    tcp_server_t_terminate(request.server);
 
     unsigned long m_size = strlen(request.payload);
@@ -123,6 +123,10 @@ void server_handler(struct request_t request, struct reply_t reply)
     protocol_lexer_t_create(&lexer, request.payload, request.payload_length);
 
     int error = protocol_ast_t_parse(lexer, &abstract_syntax_tree);
+
+    LOG("[AST]:");
+    protocol_ast_t_print(abstract_syntax_tree);
+    printf("\n");
 
     if(error)
     {
